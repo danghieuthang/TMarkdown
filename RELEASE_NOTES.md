@@ -7,7 +7,7 @@
 ### 📦 Tải về và Sử dụng Ngay (Windows x64)
 
 - **[TMarkdown-windows-x64.zip](https://github.com/REPLACE_WITH_YOUR_USERNAME/TMarkdown/releases/download/v1.0.0/TMarkdown-windows-x64.zip)** *(Khuyên dùng)*: Tải về, giải nén và nhấp đúp `TMarkdown.exe` để mở.
-- **[TMarkdown.exe](https://github.com/REPLACE_WITH_YOUR_USERNAME/TMarkdown/releases/download/v1.0.0/TMarkdown.exe)**: File thực thi độc lập trực tiếp.
+- **[TMarkdown.exe](https://github.com/danghieuthang/TMarkdownn/releases/download/v1.0.0/TMarkdown.exe)**: File thực thi độc lập trực tiếp.
 
 > [!NOTE]
 > Ứng dụng chạy ngay trên **Windows 10 và Windows 11** mà không cần cài đặt thêm bất kỳ phần mềm hay môi trường lập trình nào (nhờ có sẵn Microsoft Edge WebView2).

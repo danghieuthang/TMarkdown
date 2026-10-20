@@ -10,7 +10,7 @@
 
 Bạn không cần cài đặt Go, Node.js hay bất kỳ phần mềm lập trình nào. Chỉ cần:
 
-1. Truy cập trang **[Releases](https://github.com/REPLACE_WITH_YOUR_USERNAME/TMarkdown/releases/latest)**.
+1. Truy cập trang **[Releases](https://github.com/danghieuthang/TMarkdown/releases/latest)**.
 2. Tải tệp **`TMarkdown-windows-x64.zip`** (hoặc tệp `TMarkdown.exe`).
 3. Giải nén và **nhấp đúp vào `TMarkdown.exe`** để bắt đầu sử dụng ngay lập tức!
 
