@@ -27,12 +27,21 @@ export interface ScrollState {
   lastUpdated: number;
 }
 
+export interface RecentItem {
+  path: string;
+  name: string;
+  timestamp: number;
+}
+
 export interface VaultSession {
   vaultPath: string;
   vaultName: string;
   openTabs: TabItem[];
   activeTabId: string | null;
   scrollMemory: Record<string, ScrollState>;
+  favorites?: string[];
+  recentFiles?: RecentItem[];
 }
 
 export type ViewMode = 'reading' | 'edit' | 'split';
+

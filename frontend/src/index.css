@@ -1134,3 +1134,196 @@ mark.search-highlight.active {
   opacity: 1;
   background: var(--bg-sidebar-hover);
 }
+
+/* ==========================================================================
+   ADVANCED FEATURES: Navigation Switcher, Highlights, Tooltip, Zen Mode
+   ========================================================================== */
+
+/* 1. Sidebar Navigation Switcher */
+.sidebar-nav-tabs {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 4px 6px;
+  gap: 4px;
+}
+
+.sidebar-nav-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 6px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.sidebar-nav-tab:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-sidebar-hover);
+}
+
+.sidebar-nav-tab.active {
+  color: var(--accent-primary);
+  background-color: var(--bg-surface-elevated);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.sidebar-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background-color: var(--accent-glow);
+  color: var(--accent-primary);
+}
+
+.sidebar-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 36px 16px;
+  color: var(--text-muted);
+}
+
+/* 2. Obsidian-style Highlights (==text==) */
+.markdown-body mark.md-highlight {
+  background-color: rgba(250, 204, 21, 0.28);
+  color: inherit;
+  padding: 2px 5px;
+  margin: 0 1px;
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  border-bottom: 1.5px solid rgba(250, 204, 21, 0.6);
+  transition: background-color 0.15s ease;
+}
+
+[data-theme='light'] .markdown-body mark.md-highlight {
+  background-color: rgba(245, 158, 11, 0.24);
+  border-bottom-color: rgba(245, 158, 11, 0.7);
+}
+
+.markdown-body mark.md-highlight:hover {
+  background-color: rgba(250, 204, 21, 0.42);
+}
+
+/* 3. Floating Selection Tooltip */
+.selection-tooltip {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: tooltipFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -90%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
+.tooltip-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.tooltip-action-btn:hover {
+  background-color: var(--bg-sidebar-hover);
+  color: var(--text-primary);
+}
+
+/* 4. Zen / Focus Mode */
+.app-container.zen-mode-active {
+  grid-template-rows: 1fr;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-container.zen-mode-active .workspace-body {
+  height: 100vh;
+}
+
+.zen-viewport {
+  width: 100vw;
+  height: 100vh;
+}
+
+.zen-viewport .doc-scroll-viewport {
+  padding: 60px 24px;
+}
+
+.zen-viewport .doc-content-wrapper {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.zen-exit-btn {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  opacity: 0.35;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zen-exit-btn:hover {
+  opacity: 1;
+  background-color: var(--bg-sidebar-hover);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+

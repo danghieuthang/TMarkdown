@@ -9,7 +9,8 @@ import {
   Book, 
   PanelLeftClose, 
   PanelLeft, 
-  ListTree 
+  ListTree,
+  Maximize2
 } from 'lucide-react';
 import type { ViewMode } from '../../types';
 
@@ -25,6 +26,8 @@ interface TopBarProps {
   onToggleLeftSidebar: () => void;
   showRightSidebar: boolean;
   onToggleRightSidebar: () => void;
+  isZenMode?: boolean;
+  onToggleZenMode?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -39,6 +42,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onToggleLeftSidebar,
   showRightSidebar,
   onToggleRightSidebar,
+  isZenMode = false,
+  onToggleZenMode
 }) => {
   return (
     <header className="topbar">
@@ -107,6 +112,17 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <ListTree size={18} />
         </button>
+
+        {/* Zen / Focus Mode Toggle (F10) */}
+        {onToggleZenMode && (
+          <button 
+            className={`action-btn ${isZenMode ? 'active' : ''}`} 
+            onClick={onToggleZenMode}
+            title="Chế độ tập trung đọc (Zen Mode - F10)"
+          >
+            <Maximize2 size={16} />
+          </button>
+        )}
 
         {/* Theme Toggle */}
         <button 

@@ -11,7 +11,9 @@ import {
   XSquare,
   Terminal,
   BookOpen,
-  Edit3
+  Edit3,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 import { TopBar } from './components/Header/TopBar';
 import { FileTree } from './components/Sidebar/FileTree';
@@ -21,7 +23,7 @@ import { MarkdownEditor } from './components/Viewer/MarkdownEditor';
 import { OutlineSidebar } from './components/Outline/OutlineSidebar';
 import { SearchModal, type CommandItem } from './components/Search/SearchModal';
 import { StatusBar } from './components/StatusBar';
-import type { FileNode, TabItem, ViewMode } from './types';
+import type { FileNode, TabItem, ViewMode, RecentItem } from './types';
 import { SAMPLE_VAULT_FILES } from './data/sampleVault';
 import { vaultService } from './utils/fileSystem';
 import { parseAndRenderMarkdown } from './utils/markdownParser';
@@ -58,10 +60,33 @@ export function App() {
   const [showRightSidebar, setShowRightSidebar] = useState<boolean>(true);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [searchModalMode, setSearchModalMode] = useState<'files' | 'content' | 'commands'>('files');
+  const [searchInitialQuery, setSearchInitialQuery] = useState<string>('');
   const [isInPageSearchOpen, setIsInPageSearchOpen] = useState<boolean>(false);
 
-  const openSearchModal = useCallback((mode: 'files' | 'content' | 'commands' = 'files') => {
+  // Advanced features state (Favorites, Recent files, Zen mode)
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('tmarkdown_favorites');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [recentFiles, setRecentFiles] = useState<RecentItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('tmarkdown_recent_files');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isZenMode, setIsZenMode] = useState<boolean>(false);
+
+  const openSearchModal = useCallback((mode: 'files' | 'content' | 'commands' = 'files', initialQuery = '') => {
     setSearchModalMode(mode);
+    setSearchInitialQuery(initialQuery);
     setIsSearchOpen(true);
   }, []);
 
@@ -100,6 +125,12 @@ export function App() {
           if (session.activeTabId) {
             setActiveTabId(session.activeTabId);
           }
+          if (session.favorites && Array.isArray(session.favorites)) {
+            setFavorites(session.favorites);
+          }
+          if (session.recentFiles && Array.isArray(session.recentFiles)) {
+            setRecentFiles(session.recentFiles);
+          }
         } catch (e) {
           console.warn('Failed to parse previous session:', e);
         }
@@ -136,17 +167,21 @@ export function App() {
     };
   }, [activeTabId, tabs]);
 
-  // Save session state on tab or vault change
+  // Save session state on tab, vault, favorites, or recentFiles change
   useEffect(() => {
     const sessionObj = {
       vaultRootPath: vaultService.getVaultRoot(),
       vaultName,
       tabs,
       activeTabId,
+      favorites,
+      recentFiles,
       timestamp: Date.now()
     };
     vaultService.saveSession(JSON.stringify(sessionObj));
-  }, [vaultName, tabs, activeTabId]);
+    localStorage.setItem('tmarkdown_favorites', JSON.stringify(favorites));
+    localStorage.setItem('tmarkdown_recent_files', JSON.stringify(recentFiles));
+  }, [vaultName, tabs, activeTabId, favorites, recentFiles]);
 
   // Apply theme to document
   useEffect(() => {
@@ -186,6 +221,17 @@ export function App() {
       setTargetSnippet(null);
     }
 
+    // Update recent files list
+    setRecentFiles(prev => {
+      const filtered = prev.filter(item => item.path !== file.path);
+      const newRecent: RecentItem = {
+        path: file.path,
+        name: file.name,
+        timestamp: Date.now()
+      };
+      return [newRecent, ...filtered].slice(0, 30);
+    });
+
     // Check if already open
     const existingIndex = tabs.findIndex(t => t.path === file.path);
     if (existingIndex !== -1) {
@@ -200,6 +246,52 @@ export function App() {
       setActiveTabId(newTab.id);
     }
   }, [tabs]);
+
+  // Feature 1: Toggle Favorites
+  const handleToggleFavorite = useCallback((path: string) => {
+    setFavorites(prev => {
+      if (prev.includes(path)) {
+        return prev.filter(p => p !== path);
+      } else {
+        return [...prev, path];
+      }
+    });
+  }, []);
+
+  // Feature 1: Clear Recent Files History
+  const handleClearRecent = useCallback(() => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử tệp mở gần đây?')) {
+      setRecentFiles([]);
+      localStorage.removeItem('tmarkdown_recent_files');
+    }
+  }, []);
+
+  // Feature 2: Highlight Text toggle (==text==) and save directly to active file
+  const handleHighlightText = useCallback(async (selectedText: string) => {
+    if (!activeTabId || !currentContent) return;
+    const clean = selectedText.trim();
+    if (!clean) return;
+
+    let newContent: string;
+    if (currentContent.includes(`==${clean}==`)) {
+      newContent = currentContent.replace(`==${clean}==`, clean);
+    } else if (currentContent.includes(clean)) {
+      newContent = currentContent.replace(clean, `==${clean}==`);
+    } else {
+      return;
+    }
+
+    setCurrentContent(newContent);
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (tab) {
+      await vaultService.writeFile(tab.path, newContent);
+    }
+  }, [activeTabId, currentContent, tabs]);
+
+  // Feature 2: Global Search pre-populated from Selection Tooltip
+  const handleSearchInVault = useCallback((query: string) => {
+    openSearchModal('content', query);
+  }, [openSearchModal]);
 
   // Close tab
   const handleCloseTab = useCallback((tabId: string, e: React.MouseEvent) => {
@@ -568,6 +660,14 @@ export function App() {
       }
     },
     {
+      id: 'toggle-zen-mode',
+      title: isZenMode ? 'Thoát chế độ tập trung (Exit Zen Mode)' : 'Bật chế độ tập trung (Zen Mode)',
+      subtitle: 'Ẩn toàn bộ thanh công cụ để tập trung đọc tài liệu',
+      shortcut: 'F10',
+      icon: isZenMode ? <Minimize2 size={15} /> : <Maximize2 size={15} />,
+      execute: () => setIsZenMode(prev => !prev)
+    },
+    {
       id: 'reset-zoom',
       title: 'Đặt lại cỡ chữ mặc định (Reset Font Size 15px)',
       subtitle: `Cỡ chữ hiện tại: ${readerFontSize}px`,
@@ -586,6 +686,7 @@ export function App() {
     activeTabId,
     tabs,
     readerFontSize,
+    isZenMode,
     handleNewFile,
     handleOpenFolder,
     handleRefreshDirectory,
@@ -596,6 +697,18 @@ export function App() {
   // Keyboard shortcuts listener
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // F10 or Ctrl+Shift+F: Toggle Zen Mode
+      if (e.key === 'F10' || ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f'))) {
+        e.preventDefault();
+        setIsZenMode(prev => !prev);
+        return;
+      }
+      // Esc: Exit Zen Mode if active
+      if (e.key === 'Escape' && isZenMode) {
+        e.preventDefault();
+        setIsZenMode(false);
+        return;
+      }
       // Ctrl+Shift+P or F1: Command Palette
       if (((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) || e.key === 'F1') {
         e.preventDefault();
@@ -666,29 +779,45 @@ export function App() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [activeTabId, handleCloseTab, handleNewFile, handleOpenFolder, openSearchModal]);
+  }, [activeTabId, isZenMode, handleCloseTab, handleNewFile, handleOpenFolder, openSearchModal]);
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${isZenMode ? 'zen-mode-active' : ''}`}>
+      {/* Floating Zen Mode Exit Button */}
+      {isZenMode && (
+        <button
+          className="zen-exit-btn"
+          onClick={() => setIsZenMode(false)}
+          title="Thoát chế độ tập trung (Esc / F10)"
+        >
+          <Minimize2 size={14} />
+          <span>Thoát Zen Mode</span>
+        </button>
+      )}
+
       {/* Top Navigation */}
-      <TopBar
-        vaultName={vaultName}
-        theme={theme}
-        onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-        viewMode={viewMode}
-        onChangeViewMode={setViewMode}
-        onOpenFolder={handleOpenFolder}
-        onOpenSearch={() => openSearchModal('files')}
-        showLeftSidebar={showLeftSidebar}
-        onToggleLeftSidebar={() => setShowLeftSidebar(prev => !prev)}
-        showRightSidebar={showRightSidebar}
-        onToggleRightSidebar={() => setShowRightSidebar(prev => !prev)}
-      />
+      {!isZenMode && (
+        <TopBar
+          vaultName={vaultName}
+          theme={theme}
+          onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+          viewMode={viewMode}
+          onChangeViewMode={setViewMode}
+          onOpenFolder={handleOpenFolder}
+          onOpenSearch={() => openSearchModal('files')}
+          showLeftSidebar={showLeftSidebar}
+          onToggleLeftSidebar={() => setShowLeftSidebar(prev => !prev)}
+          showRightSidebar={showRightSidebar}
+          onToggleRightSidebar={() => setShowRightSidebar(prev => !prev)}
+          isZenMode={isZenMode}
+          onToggleZenMode={() => setIsZenMode(prev => !prev)}
+        />
+      )}
 
       {/* Main 3-Column Workspace */}
       <div className="workspace-body">
         {/* Left Sidebar: File Tree */}
-        {showLeftSidebar && (
+        {!isZenMode && showLeftSidebar && (
           <aside className="sidebar sidebar-left" style={{ width: `${leftWidth}px` }}>
             <FileTree
               files={files}
@@ -700,12 +829,16 @@ export function App() {
               onDeletePath={handleDeletePath}
               onShowInFolder={handleShowInFolder}
               onRefresh={handleRefreshDirectory}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+              recentFiles={recentFiles}
+              onClearRecent={handleClearRecent}
             />
           </aside>
         )}
 
         {/* Left Resizable Splitter */}
-        {showLeftSidebar && (
+        {!isZenMode && showLeftSidebar && (
           <div
             className="resize-splitter left-splitter"
             onMouseDown={handleLeftResizeStart}
@@ -714,13 +847,15 @@ export function App() {
         )}
 
         {/* Center Main Viewport */}
-        <main className="main-viewport">
-          <TabBar
-            tabs={tabs}
-            activeTabId={activeTabId}
-            onSelectTab={handleSelectTab}
-            onCloseTab={handleCloseTab}
-          />
+        <main className={`main-viewport ${isZenMode ? 'zen-viewport' : ''}`}>
+          {!isZenMode && (
+            <TabBar
+              tabs={tabs}
+              activeTabId={activeTabId}
+              onSelectTab={handleSelectTab}
+              onCloseTab={handleCloseTab}
+            />
+          )}
 
           {activeTabId ? (
             viewMode === 'reading' ? (
@@ -737,6 +872,8 @@ export function App() {
                 onActiveHeadingChange={setActiveHeadingId}
                 onScrollProgressChange={setScrollProgress}
                 onNavigateFile={handleNavigateInternalLink}
+                onHighlightText={handleHighlightText}
+                onSearchInVault={handleSearchInVault}
               />
             ) : (
               <MarkdownEditor
@@ -768,7 +905,7 @@ export function App() {
         </main>
 
         {/* Right Resizable Splitter */}
-        {showRightSidebar && (
+        {!isZenMode && showRightSidebar && (
           <div
             className="resize-splitter right-splitter"
             onMouseDown={handleRightResizeStart}
@@ -777,7 +914,7 @@ export function App() {
         )}
 
         {/* Right Sidebar: Outline (TOC) */}
-        {showRightSidebar && (
+        {!isZenMode && showRightSidebar && (
           <aside className="sidebar sidebar-right" style={{ width: `${rightWidth}px` }}>
             <OutlineSidebar
               headings={headings}
@@ -789,16 +926,18 @@ export function App() {
       </div>
 
       {/* Status Bar */}
-      <StatusBar
-        currentFilePath={activeTabId}
-        content={currentContent}
-        scrollProgress={scrollProgress}
-        fontSize={readerFontSize}
-        onChangeFontSize={(size) => {
-          setReaderFontSize(size);
-          localStorage.setItem('tmarkdown_font_size', size.toString());
-        }}
-      />
+      {!isZenMode && (
+        <StatusBar
+          currentFilePath={activeTabId}
+          content={currentContent}
+          scrollProgress={scrollProgress}
+          fontSize={readerFontSize}
+          onChangeFontSize={(size) => {
+            setReaderFontSize(size);
+            localStorage.setItem('tmarkdown_font_size', size.toString());
+          }}
+        />
+      )}
 
       {/* Quick Switcher & Command Palette Modal */}
       <SearchModal
@@ -808,6 +947,7 @@ export function App() {
         onSelectFile={handleSelectFile}
         commands={appCommands}
         initialMode={searchModalMode}
+        initialQuery={searchInitialQuery}
       />
     </div>
   );

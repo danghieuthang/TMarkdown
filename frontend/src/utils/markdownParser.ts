@@ -100,6 +100,24 @@ export function parseWikiLinks(markdown: string): string {
   });
 }
 
+// Custom pre-processor for Obsidian-style Highlights ==highlighted text==
+export function parseHighlights(markdown: string): string {
+  // Protect fenced code blocks and inline code from highlight replacement
+  const codeBlocks: string[] = [];
+  const placeholder = '___TMD_CODE_BLOCK_';
+
+  const sanitized = markdown.replace(/(```[\s\S]*?```|`[^`\n]+`)/g, (match) => {
+    codeBlocks.push(match);
+    return `${placeholder}${codeBlocks.length - 1}___`;
+  });
+
+  const withHighlights = sanitized.replace(/==([^=\n]+)==/g, '<mark class="md-highlight">$1</mark>');
+
+  return withHighlights.replace(new RegExp(`${placeholder}(\\d+)___`, 'g'), (_, idx) => {
+    return codeBlocks[parseInt(idx, 10)] || '';
+  });
+}
+
 export interface ParseResult {
   html: string;
   headings: HeadingItem[];
@@ -115,12 +133,13 @@ export function parseAndRenderMarkdown(markdown: string): ParseResult {
   }
 
   const withWikiLinks = parseWikiLinks(markdown);
+  const withHighlights = parseHighlights(withWikiLinks);
   const slugger = new HeadingSlugger();
   const headings: HeadingItem[] = [];
 
   // Parse markdown into tokens (1 time only)
   const env = { slugger };
-  const tokens = mdParser.parse(withWikiLinks, env);
+  const tokens = mdParser.parse(withHighlights, env);
 
   // Single pass to extract headings and attach unique IDs
   for (let i = 0; i < tokens.length; i++) {

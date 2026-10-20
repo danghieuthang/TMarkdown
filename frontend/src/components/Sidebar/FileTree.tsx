@@ -12,9 +12,11 @@ import {
   MoreVertical,
   Trash2,
   Edit2,
-  ExternalLink
+  ExternalLink,
+  Star,
+  Clock
 } from 'lucide-react';
-import type { FileNode } from '../../types';
+import type { FileNode, RecentItem } from '../../types';
 
 interface FileTreeProps {
   files: FileNode[];
@@ -26,6 +28,10 @@ interface FileTreeProps {
   onDeletePath: (path: string, isDirectory: boolean) => Promise<boolean>;
   onShowInFolder?: (path: string) => void;
   onRefresh?: () => void;
+  favorites?: string[];
+  onToggleFavorite?: (path: string) => void;
+  recentFiles?: RecentItem[];
+  onClearRecent?: () => void;
 }
 
 interface ContextMenuState {
@@ -49,10 +55,57 @@ export const FileTree: React.FC<FileTreeProps> = ({
   onRenamePath,
   onDeletePath,
   onShowInFolder,
-  onRefresh
+  onRefresh,
+  favorites = [],
+  onToggleFavorite,
+  recentFiles = [],
+  onClearRecent
 }) => {
+  const [activeTab, setActiveTab] = useState<'files' | 'favorites' | 'recent'>('files');
   const [filterText, setFilterText] = useState('');
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
+
+  // Helper to resolve and select file by path
+  const handleSelectByPath = (path: string, name?: string) => {
+    const findNode = (nodes: FileNode[]): FileNode | null => {
+      for (const node of nodes) {
+        if (!node.isDirectory && (node.path === path || node.path.endsWith('/' + path))) {
+          return node;
+        }
+        if (node.children) {
+          const found = findNode(node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const targetNode = findNode(files);
+    if (targetNode) {
+      onSelectFile(targetNode);
+    } else {
+      const fallbackName = name || path.split('/').pop() || path;
+      onSelectFile({
+        id: path,
+        path,
+        name: fallbackName,
+        isDirectory: false
+      });
+    }
+  };
+
+  const formatRelativeTime = (timestamp: number): string => {
+    const now = Date.now();
+    const diffSec = Math.floor((now - timestamp) / 1000);
+    if (diffSec < 60) return 'Vừa xong';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour} giờ trước`;
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay < 7) return `${diffDay} ngày trước`;
+    return new Date(timestamp).toLocaleDateString('vi-VN');
+  };
   
   // Inline creation state
   const [creating, setCreating] = useState<CreatingState | null>(null);
@@ -349,20 +402,33 @@ export const FileTree: React.FC<FileTreeProps> = ({
       <div className="sidebar-header">
         <span>Files Explorer</span>
         <div style={{ display: 'flex', gap: 4 }}>
-          <button 
-            className="action-btn" 
-            onClick={() => handleStartCreate('file', '')} 
-            title="Tạo file Markdown mới (Ctrl+N)"
-          >
-            <FilePlus size={14} />
-          </button>
-          <button 
-            className="action-btn" 
-            onClick={() => handleStartCreate('folder', '')} 
-            title="Tạo thư mục mới"
-          >
-            <FolderPlus size={14} />
-          </button>
+          {activeTab === 'files' && (
+            <>
+              <button 
+                className="action-btn" 
+                onClick={() => handleStartCreate('file', '')} 
+                title="Tạo file Markdown mới (Ctrl+N)"
+              >
+                <FilePlus size={14} />
+              </button>
+              <button 
+                className="action-btn" 
+                onClick={() => handleStartCreate('folder', '')} 
+                title="Tạo thư mục mới"
+              >
+                <FolderPlus size={14} />
+              </button>
+            </>
+          )}
+          {activeTab === 'recent' && recentFiles.length > 0 && onClearRecent && (
+            <button 
+              className="action-btn" 
+              onClick={onClearRecent} 
+              title="Xóa lịch sử mở tệp"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
           {onRefresh && (
             <button 
               className="action-btn" 
@@ -375,65 +441,196 @@ export const FileTree: React.FC<FileTreeProps> = ({
         </div>
       </div>
 
-      <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Search size={13} style={{ position: 'absolute', left: 8, color: 'var(--text-muted)' }} />
-          <input
-            type="text"
-            placeholder="Lọc file..."
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '4px 8px 4px 26px',
-              fontSize: '12px',
-              background: 'var(--bg-input)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              outline: 'none'
-            }}
-          />
+      {/* 3-Tab View Switcher */}
+      <div className="sidebar-nav-tabs">
+        <button
+          className={`sidebar-nav-tab ${activeTab === 'files' ? 'active' : ''}`}
+          onClick={() => setActiveTab('files')}
+          title="Tất cả tập tin trong Vault"
+        >
+          <Folder size={13} />
+          <span>Tập tin</span>
+        </button>
+        <button
+          className={`sidebar-nav-tab ${activeTab === 'favorites' ? 'active' : ''}`}
+          onClick={() => setActiveTab('favorites')}
+          title="Tài liệu đã đánh dấu yêu thích"
+        >
+          <Star size={13} fill={favorites.length > 0 ? "var(--accent-primary)" : "none"} color="var(--accent-primary)" />
+          <span>Yêu thích</span>
+          {favorites.length > 0 && (
+            <span className="sidebar-tab-badge">{favorites.length}</span>
+          )}
+        </button>
+        <button
+          className={`sidebar-nav-tab ${activeTab === 'recent' ? 'active' : ''}`}
+          onClick={() => setActiveTab('recent')}
+          title="Tài liệu mở gần đây"
+        >
+          <Clock size={13} />
+          <span>Gần đây</span>
+          {recentFiles.length > 0 && (
+            <span className="sidebar-tab-badge">{recentFiles.length}</span>
+          )}
+        </button>
+      </div>
+
+      {/* View 1: Files Tree Explorer */}
+      {activeTab === 'files' && (
+        <>
+          <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={13} style={{ position: 'absolute', left: 8, color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                placeholder="Lọc file..."
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '4px 8px 4px 26px',
+                  fontSize: '12px',
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-primary)',
+                  outline: 'none'
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="sidebar-content">
+            {/* Inline creation at root level */}
+            {creating && creating.targetFolder === '' && (
+              <div style={{ padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-surface-elevated)', borderBottom: '1px solid var(--border-subtle)' }}>
+                {creating.type === 'file' ? <FileText size={14} color="var(--accent-primary)" /> : <Folder size={14} color="var(--accent-primary)" />}
+                <input
+                  ref={createInputRef}
+                  type="text"
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  onBlur={handleConfirmCreate}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleConfirmCreate();
+                    if (e.key === 'Escape') setCreating(null);
+                  }}
+                  style={{
+                    fontSize: 12,
+                    padding: '3px 6px',
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--accent-primary)',
+                    borderRadius: 3,
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    width: '100%'
+                  }}
+                />
+              </div>
+            )}
+
+            {files.length === 0 ? (
+              <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                Chưa có tài liệu nào
+              </div>
+            ) : (
+              files.map(file => renderNode(file))
+            )}
+          </div>
+        </>
+      )}
+
+      {/* View 2: Favorites List */}
+      {activeTab === 'favorites' && (
+        <div className="sidebar-content">
+          {favorites.length === 0 ? (
+            <div className="sidebar-empty-state">
+              <Star size={24} style={{ opacity: 0.3, marginBottom: 8 }} />
+              <p style={{ fontWeight: 500, fontSize: 13, margin: '0 0 4px 0' }}>Chưa có tài liệu yêu thích</p>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                Nhấp chuột phải vào file bất kỳ và chọn "Thêm vào Yêu thích" để ghim tại đây.
+              </span>
+            </div>
+          ) : (
+            favorites.map(favPath => {
+              const fileName = favPath.split('/').pop() || favPath;
+              const parentDir = favPath.includes('/') ? favPath.substring(0, favPath.lastIndexOf('/')) : '';
+              const isActive = activeFilePath === favPath;
+
+              return (
+                <div
+                  key={favPath}
+                  className={`file-item ${isActive ? 'active' : ''}`}
+                  onClick={() => handleSelectByPath(favPath, fileName)}
+                  style={{ paddingRight: 8 }}
+                >
+                  <span className="file-icon">
+                    <Star size={14} fill="var(--accent-primary)" color="var(--accent-primary)" />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <span className="file-name" style={{ fontSize: 12, fontWeight: 500 }}>{fileName}</span>
+                    {parentDir && (
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {parentDir}
+                      </span>
+                    )}
+                  </div>
+                  <div className="file-hover-actions">
+                    <span
+                      className="hover-action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFavorite?.(favPath);
+                      }}
+                      title="Bỏ khỏi yêu thích"
+                    >
+                      <Trash2 size={12} />
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
-      </div>
+      )}
 
-      <div className="sidebar-content">
-        {/* Inline creation at root level */}
-        {creating && creating.targetFolder === '' && (
-          <div style={{ padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-surface-elevated)', borderBottom: '1px solid var(--border-subtle)' }}>
-            {creating.type === 'file' ? <FileText size={14} color="var(--accent-primary)" /> : <Folder size={14} color="var(--accent-primary)" />}
-            <input
-              ref={createInputRef}
-              type="text"
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              onBlur={handleConfirmCreate}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleConfirmCreate();
-                if (e.key === 'Escape') setCreating(null);
-              }}
-              style={{
-                fontSize: 12,
-                padding: '3px 6px',
-                background: 'var(--bg-input)',
-                border: '1px solid var(--accent-primary)',
-                borderRadius: 3,
-                color: 'var(--text-primary)',
-                outline: 'none',
-                width: '100%'
-              }}
-            />
-          </div>
-        )}
+      {/* View 3: Recent Files */}
+      {activeTab === 'recent' && (
+        <div className="sidebar-content">
+          {recentFiles.length === 0 ? (
+            <div className="sidebar-empty-state">
+              <Clock size={24} style={{ opacity: 0.3, marginBottom: 8 }} />
+              <p style={{ fontWeight: 500, fontSize: 13, margin: '0 0 4px 0' }}>Chưa có lịch sử mở file</p>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                Các tài liệu bạn đọc gần đây sẽ tự động hiển thị tại đây.
+              </span>
+            </div>
+          ) : (
+            recentFiles.map(item => {
+              const isActive = activeFilePath === item.path;
 
-        {files.length === 0 ? (
-          <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-            Chưa có tài liệu nào
-          </div>
-        ) : (
-          files.map(file => renderNode(file))
-        )}
-      </div>
+              return (
+                <div
+                  key={item.path}
+                  className={`file-item ${isActive ? 'active' : ''}`}
+                  onClick={() => handleSelectByPath(item.path, item.name)}
+                  style={{ paddingRight: 8 }}
+                >
+                  <span className="file-icon">
+                    <Clock size={14} color="var(--accent-primary)" />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <span className="file-name" style={{ fontSize: 12, fontWeight: 500 }}>{item.name}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                      {formatRelativeTime(item.timestamp)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Floating Context Menu */}
       {contextMenu.visible && contextMenu.node && (
@@ -471,16 +668,34 @@ export const FileTree: React.FC<FileTreeProps> = ({
               </div>
             </>
           ) : (
-            <div 
-              className="context-menu-item" 
-              onClick={() => {
-                onSelectFile(contextMenu.node!);
-                setContextMenu(prev => ({ ...prev, visible: false }));
-              }}
-            >
-              <FileText size={13} />
-              <span>Mở tài liệu</span>
-            </div>
+            <>
+              <div 
+                className="context-menu-item" 
+                onClick={() => {
+                  onSelectFile(contextMenu.node!);
+                  setContextMenu(prev => ({ ...prev, visible: false }));
+                }}
+              >
+                <FileText size={13} />
+                <span>Mở tài liệu</span>
+              </div>
+              {onToggleFavorite && (
+                <div 
+                  className="context-menu-item" 
+                  onClick={() => {
+                    onToggleFavorite(contextMenu.node!.path);
+                    setContextMenu(prev => ({ ...prev, visible: false }));
+                  }}
+                >
+                  <Star 
+                    size={13} 
+                    fill={favorites.includes(contextMenu.node.path) ? "var(--accent-primary)" : "none"} 
+                    color="var(--accent-primary)" 
+                  />
+                  <span>{favorites.includes(contextMenu.node.path) ? 'Bỏ khỏi Yêu thích' : 'Thêm vào Yêu thích'}</span>
+                </div>
+              )}
+            </>
           )}
 
           <div className="context-menu-divider" />

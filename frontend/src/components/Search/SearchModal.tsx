@@ -19,6 +19,7 @@ interface SearchModalProps {
   onSelectFile: (file: FileNode, lineNumber?: number, snippet?: string) => void;
   commands?: CommandItem[];
   initialMode?: 'files' | 'content' | 'commands';
+  initialQuery?: string;
 }
 
 interface ContentSearchResult {
@@ -62,10 +63,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   files,
   onSelectFile,
   commands = [],
-  initialMode = 'files'
+  initialMode = 'files',
+  initialQuery = ''
 }) => {
   const [searchMode, setSearchMode] = useState<'files' | 'content' | 'commands'>(initialMode);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [contentResults, setContentResults] = useState<ContentSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -157,12 +159,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setSearchMode(initialMode);
-      setQuery(initialMode === 'commands' ? '>' : '');
+      setQuery(initialQuery !== '' ? initialQuery : (initialMode === 'commands' ? '>' : ''));
       setSelectedIndex(0);
       setContentResults([]);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [isOpen, initialMode]);
+  }, [isOpen, initialMode, initialQuery]);
 
   const activeResultsCount = searchMode === 'files'
     ? filteredFiles.length
