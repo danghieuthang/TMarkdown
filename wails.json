@@ -1,0 +1,21 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "TMarkdown",
+  "outputfilename": "TMarkdown",
+  "frontend:dir": "frontend",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "User",
+    "email": "user@example.com"
+  },
+  "info": {
+    "companyName": "TMarkdown",
+    "productName": "TMarkdown",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright 2026",
+    "comments": "Obsidian-lite Markdown Reader"
+  }
+}
