@@ -10,6 +10,7 @@ interface InPageSearchProps {
   totalMatches: number;
   onNext: () => void;
   onPrev: () => void;
+  focusTrigger?: number;
 }
 
 export const InPageSearch: React.FC<InPageSearchProps> = ({
@@ -20,7 +21,8 @@ export const InPageSearch: React.FC<InPageSearchProps> = ({
   currentIndex,
   totalMatches,
   onNext,
-  onPrev
+  onPrev,
+  focusTrigger
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -31,7 +33,7 @@ export const InPageSearch: React.FC<InPageSearchProps> = ({
         inputRef.current?.select();
       }, 50);
     }
-  }, [isOpen]);
+  }, [isOpen, focusTrigger]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {

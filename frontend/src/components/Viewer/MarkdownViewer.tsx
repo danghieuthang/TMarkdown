@@ -14,6 +14,8 @@ interface MarkdownViewerProps {
   targetSnippet?: string | null;
   fontSize?: number;
   isSearchOpen?: boolean;
+  searchTrigger?: number;
+  initialSearchQuery?: string;
   onCloseSearch?: () => void;
   onActiveHeadingChange?: (headingId: string) => void;
   onScrollProgressChange?: (progressPercent: number) => void;
@@ -31,6 +33,8 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
   targetSnippet,
   fontSize = 15,
   isSearchOpen = false,
+  searchTrigger,
+  initialSearchQuery,
   onCloseSearch,
   onActiveHeadingChange,
   onScrollProgressChange,
@@ -283,6 +287,13 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
     updateActiveMatch(prev);
   };
 
+  // Handle initial search query or selection prefill
+  useEffect(() => {
+    if (initialSearchQuery !== undefined && initialSearchQuery !== '') {
+      setInPageQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery, searchTrigger]);
+
   // Clear when search is closed
   useEffect(() => {
     if (!isSearchOpen) {
@@ -394,12 +405,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="doc-scroll-viewport"
-      onScroll={handleScroll}
-      style={{ position: 'relative' }}
-    >
+    <div className="doc-viewer-container">
       <InPageSearch
         isOpen={isSearchOpen}
         onClose={onCloseSearch || (() => {})}
@@ -409,17 +415,24 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
         totalMatches={totalMatches}
         onNext={handleNextMatch}
         onPrev={handlePrevMatch}
+        focusTrigger={searchTrigger}
       />
 
-      <div className="doc-content-wrapper">
-        <article
-          ref={articleRef}
-          className="markdown-body"
-          style={{ fontSize: `${fontSize}px` }}
-          dangerouslySetInnerHTML={{ __html: displayHtml }}
-          onClick={handleArticleClick}
-          onMouseUp={handleTextSelection}
-        />
+      <div
+        ref={containerRef}
+        className="doc-scroll-viewport"
+        onScroll={handleScroll}
+      >
+        <div className="doc-content-wrapper">
+          <article
+            ref={articleRef}
+            className="markdown-body"
+            style={{ fontSize: `${fontSize}px` }}
+            dangerouslySetInnerHTML={{ __html: displayHtml }}
+            onClick={handleArticleClick}
+            onMouseUp={handleTextSelection}
+          />
+        </div>
       </div>
 
       {/* Floating Highlight & Action Tooltip (Feature 2) */}

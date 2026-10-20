@@ -62,6 +62,16 @@ export function App() {
   const [searchModalMode, setSearchModalMode] = useState<'files' | 'content' | 'commands'>('files');
   const [searchInitialQuery, setSearchInitialQuery] = useState<string>('');
   const [isInPageSearchOpen, setIsInPageSearchOpen] = useState<boolean>(false);
+  const [inPageSearchTrigger, setInPageSearchTrigger] = useState<number>(0);
+  const [inPageInitialQuery, setInPageInitialQuery] = useState<string>('');
+
+  const triggerInPageSearch = (prefill?: string) => {
+    setIsInPageSearchOpen(true);
+    setInPageSearchTrigger(prev => prev + 1);
+    if (prefill !== undefined) {
+      setInPageInitialQuery(prefill);
+    }
+  };
 
   // Advanced features state (Favorites, Recent files, Zen mode)
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -595,7 +605,10 @@ export function App() {
       subtitle: 'Mở thanh tìm kiếm từ khóa trong trang',
       shortcut: 'Ctrl+F',
       icon: <Search size={15} />,
-      execute: () => setIsInPageSearchOpen(true)
+      execute: () => {
+        const selection = window.getSelection()?.toString().trim();
+        triggerInPageSearch(selection || undefined);
+      }
     },
     {
       id: 'toggle-view-mode',
@@ -740,9 +753,10 @@ export function App() {
         return;
       }
       // Ctrl+F: In-page search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
-        setIsInPageSearchOpen(true);
+        const selection = window.getSelection()?.toString().trim();
+        triggerInPageSearch(selection || undefined);
         return;
       }
       // Ctrl+B: Toggle left sidebar
@@ -868,7 +882,12 @@ export function App() {
                 targetSnippet={targetSnippet}
                 fontSize={readerFontSize}
                 isSearchOpen={isInPageSearchOpen}
-                onCloseSearch={() => setIsInPageSearchOpen(false)}
+                searchTrigger={inPageSearchTrigger}
+                initialSearchQuery={inPageInitialQuery}
+                onCloseSearch={() => {
+                  setIsInPageSearchOpen(false);
+                  setInPageInitialQuery('');
+                }}
                 onActiveHeadingChange={setActiveHeadingId}
                 onScrollProgressChange={setScrollProgress}
                 onNavigateFile={handleNavigateInternalLink}
