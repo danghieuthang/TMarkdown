@@ -3,6 +3,8 @@ import { Highlighter, Quote, Search, Check } from 'lucide-react';
 import { renderMarkdown } from '../../utils/markdownParser';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { InPageSearch } from '../Search/InPageSearch';
+import { TableCustomizerModal } from '../Table/TableCustomizerModal';
+import { type TableData, parseTableElement, copyTableToClipboard } from '../../utils/tableExport';
 import type { HeadingItem, ContentWidthMode } from '../../types';
 
 interface MarkdownViewerProps {
@@ -59,6 +61,10 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
     isAlreadyHighlighted: boolean;
   } | null>(null);
   const [quoteCopied, setQuoteCopied] = useState(false);
+
+  // Table Column Customizer Modal state
+  const [customizerTable, setCustomizerTable] = useState<TableData | null>(null);
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState<boolean>(false);
 
   // Parse markdown into HTML (uses pre-rendered single-pass result if provided)
   const displayHtml = useMemo(() => {
@@ -328,6 +334,120 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
     });
   }, [displayHtml]);
 
+  // Attach Table Card & Action Toolbar (Copy for Excel & Customize Columns) to all tables
+  React.useEffect(() => {
+    if (!containerRef.current) return;
+    const tables = containerRef.current.querySelectorAll('.markdown-body table');
+    tables.forEach((table) => {
+      // Find or create table wrapper
+      let wrapper = table.closest('.table-wrapper') as HTMLElement | null;
+      if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'table-wrapper';
+        table.parentNode?.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+      }
+
+      // Check if already wrapped inside table-card
+      if (wrapper.parentElement?.classList.contains('table-card')) return;
+
+      const card = document.createElement('div');
+      card.className = 'table-card';
+
+      // Insert card before wrapper
+      wrapper.parentNode?.insertBefore(card, wrapper);
+
+      // Create toolbar header
+      const toolbar = document.createElement('div');
+      toolbar.className = 'table-card-header';
+
+      // Left info badge
+      const badge = document.createElement('div');
+      badge.className = 'table-card-badge';
+      const colCount = table.querySelectorAll('thead th, tr:first-child th, tr:first-child td').length;
+      const rowCount = Math.max(0, table.querySelectorAll('tr').length - 1);
+      badge.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/>
+          <rect width="18" height="18" x="3" y="3" rx="2"/>
+        </svg>
+        <span>Bảng dữ liệu ${colCount > 0 ? `(${colCount} cột × ${rowCount} dòng)` : ''}</span>
+      `;
+
+      // Right actions
+      const actions = document.createElement('div');
+      actions.className = 'table-card-actions';
+
+      // 1-Click Copy for Excel button
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'table-action-btn copy-excel-btn';
+      copyBtn.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+          <path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/>
+        </svg>
+        <span>Copy Excel</span>
+      `;
+      copyBtn.title = 'Sao chép toàn bộ bảng trực tiếp vào Excel / Google Sheets (HTML Table + TSV)';
+      copyBtn.onclick = async (e) => {
+        e.stopPropagation();
+        const data = parseTableElement(table as HTMLTableElement);
+        const ok = await copyTableToClipboard(data);
+        if (ok) {
+          copyBtn.innerHTML = `
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span style="color: #10b981; font-weight: 600;">✓ Đã copy Excel!</span>
+          `;
+          copyBtn.classList.add('success');
+          setTimeout(() => {
+            copyBtn.classList.remove('success');
+            copyBtn.innerHTML = `
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                <path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/>
+              </svg>
+              <span>Copy Excel</span>
+            `;
+          }, 1800);
+        }
+      };
+
+      // Customize columns button
+      const customBtn = document.createElement('button');
+      customBtn.type = 'button';
+      customBtn.className = 'table-action-btn customize-cols-btn';
+      customBtn.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/>
+          <line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/>
+          <line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/>
+          <line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/>
+          <line x1="16" x2="16" y1="18" y2="22"/>
+        </svg>
+        <span>Tùy chỉnh cột...</span>
+      `;
+      customBtn.title = 'Chọn lọc các cột và đổi thứ tự cột trước khi copy/xuất file';
+      customBtn.onclick = (e) => {
+        e.stopPropagation();
+        const data = parseTableElement(table as HTMLTableElement);
+        setCustomizerTable(data);
+        setIsCustomizerOpen(true);
+      };
+
+      actions.appendChild(copyBtn);
+      actions.appendChild(customBtn);
+
+      toolbar.appendChild(badge);
+      toolbar.appendChild(actions);
+
+      card.appendChild(toolbar);
+      card.appendChild(wrapper);
+    });
+  }, [displayHtml]);
+
   // Jump to specific line from search result (Feature C1)
   useEffect(() => {
     if (!targetLineNumber || !containerRef.current) return;
@@ -488,6 +608,15 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
           )}
         </div>
       )}
+      {/* Table Column Customizer Modal */}
+      <TableCustomizerModal
+        isOpen={isCustomizerOpen}
+        onClose={() => {
+          setIsCustomizerOpen(false);
+          setCustomizerTable(null);
+        }}
+        tableData={customizerTable}
+      />
     </div>
   );
 };
