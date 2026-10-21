@@ -24,7 +24,7 @@ export function useScrollMemory({
   const isScrollSpyLockedRef = useRef<boolean>(false);
   const lockTimerRef = useRef<number | null>(null);
 
-  const lockScrollSpy = useCallback((durationMs = 650) => {
+  const lockScrollSpy = useCallback((durationMs = 200) => {
     isScrollSpyLockedRef.current = true;
     if (lockTimerRef.current) {
       window.clearTimeout(lockTimerRef.current);

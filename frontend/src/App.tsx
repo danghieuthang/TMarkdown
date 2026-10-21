@@ -376,13 +376,13 @@ export function App() {
 
   const scrollSpyLockedUntilRef = useRef<number>(0);
 
-  // Jump to heading on click with temporary scroll-spy lock and visual pulse
+  // Jump to heading on click with temporary scroll-spy lock and visual pulse (Instant Jump)
   const handleSelectHeading = useCallback((headingId: string) => {
-    scrollSpyLockedUntilRef.current = Date.now() + 700;
+    scrollSpyLockedUntilRef.current = Date.now() + 200;
     setActiveHeadingId(headingId);
     const element = document.getElementById(headingId);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      element.scrollIntoView({ behavior: 'auto', block: 'start' });
       element.classList.remove('heading-target-pulse');
       void element.offsetWidth; // trigger reflow for animation restart
       element.classList.add('heading-target-pulse');

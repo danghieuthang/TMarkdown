@@ -257,7 +257,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
       const firstMark = articleRef.current.querySelector('mark.search-highlight[data-index="0"]');
       if (firstMark) {
         firstMark.classList.add('active');
-        firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstMark.scrollIntoView({ behavior: 'auto', block: 'center' });
       }
     }
   }, [isSearchOpen, inPageQuery, displayHtml, clearHighlights]);
@@ -271,7 +271,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
     const targetMark = articleRef.current.querySelector(`mark.search-highlight[data-index="${index}"]`);
     if (targetMark) {
       targetMark.classList.add('active');
-      targetMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetMark.scrollIntoView({ behavior: 'auto', block: 'center' });
     }
   }, [totalMatches]);
 
@@ -343,7 +343,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
       const targetScroll = ratio * (container.scrollHeight - container.clientHeight);
       container.scrollTo({
         top: Math.max(0, targetScroll),
-        behavior: 'smooth'
+        behavior: 'auto'
       });
 
       // Pulse flash the element containing snippet if found
@@ -388,9 +388,9 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
       const headingId = href.substring(1);
       const el = document.getElementById(headingId);
       if (el) {
-        lockScrollSpy(650);
+        lockScrollSpy(200);
         onActiveHeadingChange?.(headingId);
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.scrollIntoView({ behavior: 'auto', block: 'start' });
         el.classList.remove('heading-target-pulse');
         void el.offsetWidth;
         el.classList.add('heading-target-pulse');

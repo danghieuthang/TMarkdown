@@ -21,7 +21,7 @@ export const OutlineSidebar: React.FC<OutlineSidebarProps> = ({
   // Auto-scroll the active outline item into view in the sidebar
   useEffect(() => {
     if (activeItemRef.current) {
-      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'auto' });
     }
   }, [activeHeadingId]);
 
