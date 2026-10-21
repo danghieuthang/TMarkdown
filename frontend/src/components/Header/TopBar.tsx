@@ -10,9 +10,12 @@ import {
   PanelLeftClose, 
   PanelLeft, 
   ListTree,
-  Maximize2
+  Maximize2,
+  FoldHorizontal,
+  UnfoldHorizontal,
+  Maximize
 } from 'lucide-react';
-import type { ViewMode } from '../../types';
+import type { ViewMode, ContentWidthMode } from '../../types';
 
 interface TopBarProps {
   vaultName: string;
@@ -20,6 +23,8 @@ interface TopBarProps {
   onToggleTheme: () => void;
   viewMode: ViewMode;
   onChangeViewMode: (mode: ViewMode) => void;
+  contentWidth?: ContentWidthMode;
+  onChangeContentWidth?: (mode: ContentWidthMode) => void;
   onOpenFolder: () => void;
   onOpenSearch: () => void;
   showLeftSidebar: boolean;
@@ -36,6 +41,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onToggleTheme,
   viewMode,
   onChangeViewMode,
+  contentWidth = 'wide',
+  onChangeContentWidth,
   onOpenFolder,
   onOpenSearch,
   showLeftSidebar,
@@ -45,6 +52,16 @@ export const TopBar: React.FC<TopBarProps> = ({
   isZenMode = false,
   onToggleZenMode
 }) => {
+  const handleCycleWidth = () => {
+    if (!onChangeContentWidth) return;
+    if (contentWidth === 'standard') {
+      onChangeContentWidth('wide');
+    } else if (contentWidth === 'wide') {
+      onChangeContentWidth('full');
+    } else {
+      onChangeContentWidth('standard');
+    }
+  };
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -103,6 +120,33 @@ export const TopBar: React.FC<TopBarProps> = ({
             <Edit3 size={16} />
           </button>
         </div>
+
+        {/* Content Width Toggle */}
+        {onChangeContentWidth && (
+          <button
+            className={`action-btn ${contentWidth === 'full' ? 'active' : ''}`}
+            onClick={handleCycleWidth}
+            title={
+              contentWidth === 'standard'
+                ? 'Độ rộng: Chuẩn (840px) • Bấm để mở rộng (Wide 1200px)'
+                : contentWidth === 'wide'
+                ? 'Độ rộng: Rộng (1200px) • Bấm để bung toàn màn hình (Full 100%)'
+                : 'Độ rộng: Toàn màn hình (100%) • Bấm để thu về Chuẩn (840px)'
+            }
+            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 7px' }}
+          >
+            {contentWidth === 'standard' ? (
+              <FoldHorizontal size={15} />
+            ) : contentWidth === 'wide' ? (
+              <UnfoldHorizontal size={15} />
+            ) : (
+              <Maximize size={15} />
+            )}
+            <span style={{ fontSize: 11, fontWeight: 500, fontFamily: 'var(--font-mono)' }}>
+              {contentWidth === 'standard' ? '840' : contentWidth === 'wide' ? '1200' : 'Full'}
+            </span>
+          </button>
+        )}
 
         {/* Outline Sidebar Toggle */}
         <button

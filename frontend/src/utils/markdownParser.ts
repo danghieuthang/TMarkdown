@@ -25,21 +25,20 @@ export class HeadingSlugger {
 
   public slug(text: string): string {
     const rawSlug = slugify(text);
-    let slug = rawSlug;
     let count = this.occurrences.get(rawSlug) || 0;
+    let slug = rawSlug;
 
     if (count > 0) {
       slug = `${rawSlug}-${count}`;
     }
 
-    // Ensure slug is truly unique if another heading naturally had that name
-    while (this.occurrences.has(slug) && (this.occurrences.get(slug) || 0) > 0) {
+    while (this.occurrences.has(slug)) {
       count++;
       slug = `${rawSlug}-${count}`;
     }
 
     this.occurrences.set(rawSlug, count + 1);
-    this.occurrences.set(slug, (this.occurrences.get(slug) || 0) + 1);
+    this.occurrences.set(slug, 1);
 
     return slug;
   }

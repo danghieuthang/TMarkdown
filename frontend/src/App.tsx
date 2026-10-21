@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Sun,
   Moon,
@@ -13,7 +13,10 @@ import {
   BookOpen,
   Edit3,
   Minimize2,
-  Maximize2
+  Maximize2,
+  FoldHorizontal,
+  UnfoldHorizontal,
+  Maximize
 } from 'lucide-react';
 import { TopBar } from './components/Header/TopBar';
 import { FileTree } from './components/Sidebar/FileTree';
@@ -23,7 +26,7 @@ import { MarkdownEditor } from './components/Viewer/MarkdownEditor';
 import { OutlineSidebar } from './components/Outline/OutlineSidebar';
 import { SearchModal, type CommandItem } from './components/Search/SearchModal';
 import { StatusBar } from './components/StatusBar';
-import type { FileNode, TabItem, ViewMode, RecentItem } from './types';
+import type { FileNode, TabItem, ViewMode, RecentItem, ContentWidthMode } from './types';
 import { SAMPLE_VAULT_FILES } from './data/sampleVault';
 import { vaultService } from './utils/fileSystem';
 import { parseAndRenderMarkdown } from './utils/markdownParser';
@@ -110,6 +113,14 @@ export function App() {
   const [readerFontSize, setReaderFontSize] = useState<number>(() => {
     return Number(localStorage.getItem('tmarkdown_font_size')) || 15;
   });
+  const [contentWidth, setContentWidth] = useState<ContentWidthMode>(() => {
+    return (localStorage.getItem('tmarkdown_content_width') as ContentWidthMode) || 'wide';
+  });
+
+  const handleChangeContentWidth = useCallback((newWidth: ContentWidthMode) => {
+    setContentWidth(newWidth);
+    localStorage.setItem('tmarkdown_content_width', newWidth);
+  }, []);
 
   // Load previous session on startup (Feature B1: Full Session Persistence)
   useEffect(() => {
@@ -363,14 +374,29 @@ export function App() {
     }
   };
 
-  // Jump to heading on click
-  const handleSelectHeading = (headingId: string) => {
+  const scrollSpyLockedUntilRef = useRef<number>(0);
+
+  // Jump to heading on click with temporary scroll-spy lock and visual pulse
+  const handleSelectHeading = useCallback((headingId: string) => {
+    scrollSpyLockedUntilRef.current = Date.now() + 700;
     setActiveHeadingId(headingId);
     const element = document.getElementById(headingId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      element.classList.remove('heading-target-pulse');
+      void element.offsetWidth; // trigger reflow for animation restart
+      element.classList.add('heading-target-pulse');
+      setTimeout(() => {
+        element.classList.remove('heading-target-pulse');
+      }, 1300);
     }
-  };
+  }, []);
+
+  // Update active heading from scroll-spy, ignoring intermediate changes during programmatic navigation
+  const handleActiveHeadingChange = useCallback((headingId: string) => {
+    if (Date.now() < scrollSpyLockedUntilRef.current) return;
+    setActiveHeadingId(headingId);
+  }, []);
 
   // Handle internal markdown links and wiki-links clicked inside documents
   const handleNavigateInternalLink = useCallback((targetHref: string, anchor?: string) => {
@@ -421,7 +447,7 @@ export function App() {
       console.warn(`File not found in vault: ${targetHref}`);
       alert(`Không tìm thấy file "${targetHref}" trong Vault hiện tại.`);
     }
-  }, [files, handleSelectFile]);
+  }, [files, handleSelectFile, handleSelectHeading]);
 
   // Save content
   const handleSaveContent = async () => {
@@ -681,6 +707,27 @@ export function App() {
       execute: () => setIsZenMode(prev => !prev)
     },
     {
+      id: 'width-standard',
+      title: 'Độ rộng hiển thị: Chuẩn (Standard 840px)',
+      subtitle: 'Độ rộng tối ưu cho đọc bài viết và văn bản',
+      icon: <FoldHorizontal size={15} />,
+      execute: () => handleChangeContentWidth('standard')
+    },
+    {
+      id: 'width-wide',
+      title: 'Độ rộng hiển thị: Rộng (Wide 1200px)',
+      subtitle: 'Độ rộng mở rộng, phù hợp tài liệu kỹ thuật có bảng và code',
+      icon: <UnfoldHorizontal size={15} />,
+      execute: () => handleChangeContentWidth('wide')
+    },
+    {
+      id: 'width-full',
+      title: 'Độ rộng hiển thị: Toàn màn hình (Full 100%)',
+      subtitle: 'Bung tối đa toàn bộ diện tích màn hình cho các bảng biểu lớn',
+      icon: <Maximize size={15} />,
+      execute: () => handleChangeContentWidth('full')
+    },
+    {
       id: 'reset-zoom',
       title: 'Đặt lại cỡ chữ mặc định (Reset Font Size 15px)',
       subtitle: `Cỡ chữ hiện tại: ${readerFontSize}px`,
@@ -704,7 +751,8 @@ export function App() {
     handleOpenFolder,
     handleRefreshDirectory,
     handleCloseTab,
-    handleShowInFolder
+    handleShowInFolder,
+    handleChangeContentWidth
   ]);
 
   // Keyboard shortcuts listener
@@ -817,6 +865,8 @@ export function App() {
           onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
           viewMode={viewMode}
           onChangeViewMode={setViewMode}
+          contentWidth={contentWidth}
+          onChangeContentWidth={handleChangeContentWidth}
           onOpenFolder={handleOpenFolder}
           onOpenSearch={() => openSearchModal('files')}
           showLeftSidebar={showLeftSidebar}
@@ -881,6 +931,7 @@ export function App() {
                 targetLineNumber={targetLineNumber}
                 targetSnippet={targetSnippet}
                 fontSize={readerFontSize}
+                contentWidth={contentWidth}
                 isSearchOpen={isInPageSearchOpen}
                 searchTrigger={inPageSearchTrigger}
                 initialSearchQuery={inPageInitialQuery}
@@ -888,7 +939,7 @@ export function App() {
                   setIsInPageSearchOpen(false);
                   setInPageInitialQuery('');
                 }}
-                onActiveHeadingChange={setActiveHeadingId}
+                onActiveHeadingChange={handleActiveHeadingChange}
                 onScrollProgressChange={setScrollProgress}
                 onNavigateFile={handleNavigateInternalLink}
                 onHighlightText={handleHighlightText}

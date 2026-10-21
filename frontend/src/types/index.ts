@@ -44,4 +44,5 @@ export interface VaultSession {
 }
 
 export type ViewMode = 'reading' | 'edit' | 'split';
+export type ContentWidthMode = 'standard' | 'wide' | 'full';
 

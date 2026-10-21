@@ -3,7 +3,7 @@ import { Highlighter, Quote, Search, Check } from 'lucide-react';
 import { renderMarkdown } from '../../utils/markdownParser';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { InPageSearch } from '../Search/InPageSearch';
-import type { HeadingItem } from '../../types';
+import type { HeadingItem, ContentWidthMode } from '../../types';
 
 interface MarkdownViewerProps {
   content: string;
@@ -13,6 +13,7 @@ interface MarkdownViewerProps {
   targetLineNumber?: number | null;
   targetSnippet?: string | null;
   fontSize?: number;
+  contentWidth?: ContentWidthMode;
   isSearchOpen?: boolean;
   searchTrigger?: number;
   initialSearchQuery?: string;
@@ -32,6 +33,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
   targetLineNumber,
   targetSnippet,
   fontSize = 15,
+  contentWidth = 'wide',
   isSearchOpen = false,
   searchTrigger,
   initialSearchQuery,
@@ -66,7 +68,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
   }, [renderedHtml, content]);
 
   // Hook handles restoring and preserving exact scroll coordinates
-  const { containerRef, handleScroll } = useScrollMemory({
+  const { containerRef, handleScroll, lockScrollSpy } = useScrollMemory({
     filePath,
     content,
     headings,
@@ -386,7 +388,15 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
       const headingId = href.substring(1);
       const el = document.getElementById(headingId);
       if (el) {
+        lockScrollSpy(650);
+        onActiveHeadingChange?.(headingId);
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.remove('heading-target-pulse');
+        void el.offsetWidth;
+        el.classList.add('heading-target-pulse');
+        setTimeout(() => {
+          el.classList.remove('heading-target-pulse');
+        }, 1300);
       }
       return;
     }
@@ -423,7 +433,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
         className="doc-scroll-viewport"
         onScroll={handleScroll}
       >
-        <div className="doc-content-wrapper">
+        <div className={`doc-content-wrapper width-${contentWidth}`}>
           <article
             ref={articleRef}
             className="markdown-body"

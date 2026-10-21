@@ -538,8 +538,21 @@ html, body, #root {
 }
 
 .doc-content-wrapper {
-  max-width: 820px;
+  max-width: 1200px;
   margin: 0 auto;
+  transition: max-width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.doc-content-wrapper.width-standard {
+  max-width: 840px;
+}
+
+.doc-content-wrapper.width-wide {
+  max-width: 1200px;
+}
+
+.doc-content-wrapper.width-full {
+  max-width: 100%;
 }
 
 /* Markdown Typography - Optimized for Long Reading */
@@ -663,9 +676,26 @@ html, body, #root {
   color: var(--text-accent);
 }
 
-.markdown-body > * {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 40px;
+/* Heading target flash on outline jump */
+@keyframes heading-target-pulse {
+  0% {
+    background-color: var(--accent-glow);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+    border-radius: 4px;
+  }
+  70% {
+    background-color: var(--accent-glow);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+    border-radius: 4px;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.heading-target-pulse {
+  animation: heading-target-pulse 1.3s ease-out;
 }
 
 .copy-code-btn {
@@ -1303,8 +1333,19 @@ mark.search-highlight.active {
 }
 
 .zen-viewport .doc-content-wrapper {
-  max-width: 820px;
   margin: 0 auto;
+}
+
+.zen-viewport .doc-content-wrapper.width-standard {
+  max-width: 840px;
+}
+
+.zen-viewport .doc-content-wrapper.width-wide {
+  max-width: 1200px;
+}
+
+.zen-viewport .doc-content-wrapper.width-full {
+  max-width: 100%;
 }
 
 .zen-exit-btn {

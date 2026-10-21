@@ -21,6 +21,19 @@ export function useScrollMemory({
   const debounceTimerRef = useRef<number | null>(null);
   const isRestoringRef = useRef<boolean>(false);
 
+  const isScrollSpyLockedRef = useRef<boolean>(false);
+  const lockTimerRef = useRef<number | null>(null);
+
+  const lockScrollSpy = useCallback((durationMs = 650) => {
+    isScrollSpyLockedRef.current = true;
+    if (lockTimerRef.current) {
+      window.clearTimeout(lockTimerRef.current);
+    }
+    lockTimerRef.current = window.setTimeout(() => {
+      isScrollSpyLockedRef.current = false;
+    }, durationMs);
+  }, []);
+
   // Handle scroll event
   const handleScroll = useCallback(() => {
     if (!filePath || !containerRef.current || isRestoringRef.current) return;
@@ -37,8 +50,8 @@ export function useScrollMemory({
       onScrollProgressChange(progress);
     }
 
-    // Scroll-Spy: detect which heading is currently active
-    if (headings.length > 0) {
+    // Scroll-Spy: detect which heading is currently active (skip if locked during programmatic navigation)
+    if (!isScrollSpyLockedRef.current && headings.length > 0) {
       if (scrollTop < 30) {
         // At the very top of document
         onActiveHeadingChange?.(headings[0].id);
@@ -78,6 +91,15 @@ export function useScrollMemory({
     }, 120);
   }, [filePath, headings, onActiveHeadingChange, onScrollProgressChange]);
 
+  // Clean up lock timer on unmount
+  useEffect(() => {
+    return () => {
+      if (lockTimerRef.current) {
+        window.clearTimeout(lockTimerRef.current);
+      }
+    };
+  }, []);
+
   // Restore scroll position when filePath or content changes
   useEffect(() => {
     if (!filePath || !containerRef.current) return;
@@ -108,5 +130,5 @@ export function useScrollMemory({
     }
   }, [headings, content, handleScroll]);
 
-  return { containerRef, handleScroll };
+  return { containerRef, handleScroll, lockScrollSpy };
 }
