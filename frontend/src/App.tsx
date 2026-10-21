@@ -30,6 +30,8 @@ import type { FileNode, TabItem, ViewMode, RecentItem, ContentWidthMode } from '
 import { SAMPLE_VAULT_FILES } from './data/sampleVault';
 import { vaultService } from './utils/fileSystem';
 import { parseAndRenderMarkdown } from './utils/markdownParser';
+import logoDark from './assets/logo.png';
+import logoWhite from './assets/logo-white.png';
 
 export function App() {
   // Theme state
@@ -953,23 +955,82 @@ export function App() {
               />
             )
           ) : (
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--text-muted)',
-              gap: 12
-            }}>
-              <p style={{ fontSize: 16 }}>Chưa có tài liệu nào được mở</p>
-              <button 
-                className="vault-selector-btn" 
-                onClick={() => openSearchModal('files')}
-                style={{ fontSize: 13, padding: '6px 14px' }}
-              >
-                Nhấn Ctrl + P để tìm mở tài liệu
-              </button>
+            <div className="welcome-hero-container">
+              <div className="welcome-hero-card">
+                <div className="welcome-logo-wrap">
+                  <div className="welcome-logo-glow" />
+                  <img
+                    src={theme === 'dark' ? logoWhite : logoDark}
+                    alt="TMarkdown"
+                    className="welcome-logo-img"
+                  />
+                </div>
+                <h1 className="welcome-title">
+                  TMarkdown
+                  <span className="welcome-version-badge">v1.0.0</span>
+                </h1>
+                <p className="welcome-subtitle">
+                  Obsidian-Lite Markdown Reader & Workspace
+                </p>
+
+                <div className="welcome-actions-grid">
+                  <button
+                    className="welcome-action-card"
+                    onClick={() => openSearchModal('files')}
+                  >
+                    <div className="welcome-action-icon">
+                      <Search size={18} />
+                    </div>
+                    <div className="welcome-action-text">
+                      <span className="welcome-action-title">Tìm tài liệu</span>
+                      <span className="welcome-action-desc">Mở nhanh file trong Vault</span>
+                    </div>
+                    <kbd className="welcome-kbd">Ctrl P</kbd>
+                  </button>
+
+                  <button
+                    className="welcome-action-card"
+                    onClick={handleOpenFolder}
+                  >
+                    <div className="welcome-action-icon">
+                      <FolderOpen size={18} />
+                    </div>
+                    <div className="welcome-action-text">
+                      <span className="welcome-action-title">Mở thư mục Vault</span>
+                      <span className="welcome-action-desc">Đổi vùng làm việc trên máy</span>
+                    </div>
+                    <kbd className="welcome-kbd">Ctrl O</kbd>
+                  </button>
+
+                  <button
+                    className="welcome-action-card"
+                    onClick={() => handleNewFile()}
+                  >
+                    <div className="welcome-action-icon">
+                      <FilePlus size={18} />
+                    </div>
+                    <div className="welcome-action-text">
+                      <span className="welcome-action-title">Tạo ghi chú mới</span>
+                      <span className="welcome-action-desc">Soạn thảo văn bản Markdown</span>
+                    </div>
+                    <kbd className="welcome-kbd">Ctrl N</kbd>
+                  </button>
+
+                  <button
+                    className="welcome-action-card"
+                    onClick={() => openSearchModal('commands')}
+                  >
+                    <div className="welcome-action-icon">
+                      <Terminal size={18} />
+                    </div>
+                    <div className="welcome-action-text">
+                      <span className="welcome-action-title">Bảng lệnh hệ thống</span>
+                      <span className="welcome-action-desc">Mọi tính năng & phím tắt</span>
+                    </div>
+                    <kbd className="welcome-kbd">Ctrl ⇧ P</kbd>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </main>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  BookOpen, 
   FolderOpen, 
   Search, 
   Sun, 
@@ -15,6 +14,8 @@ import {
   UnfoldHorizontal,
   Maximize
 } from 'lucide-react';
+import logoDark from '../../assets/logo.png';
+import logoWhite from '../../assets/logo-white.png';
 import type { ViewMode, ContentWidthMode } from '../../types';
 
 interface TopBarProps {
@@ -73,9 +74,13 @@ export const TopBar: React.FC<TopBarProps> = ({
           {showLeftSidebar ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />}
         </button>
 
-        <div className="brand-badge">
-          <BookOpen size={20} className="brand-icon" />
-          <span>TMarkdown</span>
+        <div className="brand-badge" title="TMarkdown — Obsidian-Lite Markdown Reader">
+          <img 
+            src={theme === 'dark' ? logoWhite : logoDark} 
+            alt="TMarkdown Logo" 
+            className="brand-logo-img" 
+          />
+          <span className="brand-title">TMarkdown</span>
         </div>
 
         <button 

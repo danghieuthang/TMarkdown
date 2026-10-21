@@ -1,6 +1,12 @@
-# TMarkdown — Obsidian-Lite Markdown Reader & Workspace 🚀
+<p align="center">
+  <img src="frontend/src/assets/logo.png" alt="TMarkdown Logo" width="120" />
+</p>
 
-Ứng dụng chuyên đọc, tra cứu và quản lý tài liệu Markdown dài với hiệu năng cao, tối giản và mượt mà theo phong cách Obsidian. Giải quyết triệt để vấn đề mất vị trí cuộn trang và giật lag trên các văn bản lớn của VS Code.
+<h1 align="center">TMarkdown — Obsidian-Lite Markdown Reader & Workspace 🚀</h1>
+
+<p align="center">
+  Ứng dụng chuyên đọc, tra cứu và quản lý tài liệu Markdown dài với hiệu năng cao, tối giản và mượt mà theo phong cách Obsidian.
+</p>
 
 Được phát triển trên nền tảng **Go 1.22+ (Wails v2)** kết hợp **React 19 + TypeScript + Modern CSS Tokens**.
 
