@@ -3,6 +3,22 @@
 Tất cả các thay đổi đáng chú ý của dự án **TMarkdown** sẽ được ghi chép lại trong tệp này.
 Định dạng được dựa trên chuẩn [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) và tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.1] — 2026-10-23
+
+### Added (Thêm mới)
+- **Đồng bộ vị trí 2 chiều View ⇋ Edit (Two-Way Position Sync)**:
+  - Khi chuyển từ chế độ Đọc sang Soạn thảo (`View -> Edit`): Tự động cuộn khung soạn thảo đến đúng dòng tiêu đề (Section/Heading) đang xem, cách đỉnh 60px thoáng mắt, đặt con trỏ soạn thảo ở đầu mục và tự động `focus()` để gõ ngay lập tức.
+  - Khi chuyển từ Soạn thảo về Đọc (`Edit -> View`): Tự động phát hiện section gần nhất chứa con trỏ soạn thảo, cuộn đến đúng section đó kèm hiệu ứng viền phát sáng (pulse) và cập nhật mục lục Outline.
+  - Nếu ở đầu tài liệu trước heading đầu tiên: tự động cuộn theo tỷ lệ phần trăm tương đối.
+- **Phím tắt chuyển đổi nhanh View / Edit (`Ctrl + E`)**:
+  - Hỗ trợ phím tắt toàn cục `Ctrl + E` để lật qua lại tức thì giữa chế độ Đọc và Soạn thảo (kèm hiển thị phím tắt trên TopBar và Command Palette).
+
+### Fixed (Sửa lỗi)
+- **Bảo toàn ký tự kỹ thuật nguyên bản (Ngăn chặn đột biến ký tự do Typographer)**:
+  - Tắt cấu hình `typographer: false` trong Markdown parser để bảo toàn 100% văn bản kỹ thuật nguyên gốc chuẩn Obsidian / GitHub Markdown.
+  - Khắc phục triệt để lỗi ký tự Cardinality như `0..*`, `1..*`, `0..1` bị biến thành `0…*`, `1…*`, `0…1` (dấu ba chấm Unicode `…`).
+  - Giữ nguyên tham số dòng lệnh `--help`, `--version` (không bị biến thành En-dash `–help`), ký hiệu `+-` (không bị ép thành `±`), và các mục liệt kê `(c)` (không bị đổi thành `©`).
+
 ---
 
 ## [v1.1.0] — 2026-10-21

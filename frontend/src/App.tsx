@@ -1020,7 +1020,7 @@ export function App() {
                 </div>
                 <h1 className="welcome-title">
                   TMarkdown
-                  <span className="welcome-version-badge">v1.0.0</span>
+                  <span className="welcome-version-badge">v1.1.1</span>
                 </h1>
                 <p className="welcome-subtitle">
                   Obsidian-Lite Markdown Reader & Workspace
