@@ -113,14 +113,14 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             className={`action-btn ${viewMode === 'reading' ? 'active' : ''}`}
             onClick={() => onChangeViewMode('reading')}
-            title="Chế độ đọc (Reading Mode)"
+            title="Chế độ đọc (Reading Mode) - Ctrl+E"
           >
             <Book size={16} />
           </button>
           <button
             className={`action-btn ${viewMode === 'edit' ? 'active' : ''}`}
             onClick={() => onChangeViewMode('edit')}
-            title="Chế độ soạn thảo (Edit Mode)"
+            title="Chế độ soạn thảo (Edit Mode) - Ctrl+E"
           >
             <Edit3 size={16} />
           </button>

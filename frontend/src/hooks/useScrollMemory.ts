@@ -6,6 +6,8 @@ interface UseScrollMemoryProps {
   filePath: string | null;
   content?: string;
   headings: HeadingItem[];
+  targetHeadingId?: string | null;
+  targetLineNumber?: number | null;
   onActiveHeadingChange?: (headingId: string) => void;
   onScrollProgressChange?: (progressPercent: number) => void;
 }
@@ -14,6 +16,8 @@ export function useScrollMemory({
   filePath,
   content,
   headings,
+  targetHeadingId,
+  targetLineNumber,
   onActiveHeadingChange,
   onScrollProgressChange,
 }: UseScrollMemoryProps) {
@@ -103,6 +107,8 @@ export function useScrollMemory({
   // Restore scroll position when filePath or content changes
   useEffect(() => {
     if (!filePath || !containerRef.current) return;
+    // If explicitly targeting a heading or line (e.g. returning from Edit mode or search jump), do not overwrite with stale scroll
+    if (targetHeadingId || targetLineNumber) return;
 
     isRestoringRef.current = true;
     const element = containerRef.current;
@@ -118,7 +124,7 @@ export function useScrollMemory({
     return () => {
       clearTimeout(timeout);
     };
-  }, [filePath, content, handleScroll]);
+  }, [filePath, content, targetHeadingId, targetLineNumber, handleScroll]);
 
   // Initial spy check when headings or content change
   useEffect(() => {

@@ -52,7 +52,7 @@ export class HeadingSlugger {
 export const mdParser = new MarkdownIt({
   html: true,
   linkify: true,
-  typographer: true,
+  typographer: false, // Keep technical characters literal (prevents 0..* -> 0…*, --flag -> –flag, (c) -> ©)
   highlight: function (str: string, lang: string): string {
     if (lang && hljs.getLanguage(lang)) {
       try {
@@ -155,7 +155,8 @@ export function parseAndRenderMarkdown(markdown: string): ParseResult {
           .replace(/<[^>]*>/g, '')
           .replace(/[*_`~[\]()]/g, '')
           .trim();
-        headings.push({ id, level, text: text || rawText });
+        const line = token.map ? token.map[0] : undefined;
+        headings.push({ id, level, text: text || rawText, line });
       }
     }
   }

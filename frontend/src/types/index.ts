@@ -18,6 +18,7 @@ export interface HeadingItem {
   id: string;
   level: number;
   text: string;
+  line?: number;
 }
 
 export interface ScrollState {

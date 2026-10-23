@@ -12,6 +12,7 @@ interface MarkdownViewerProps {
   filePath: string | null;
   headings: HeadingItem[];
   renderedHtml?: string;
+  targetHeadingId?: string | null;
   targetLineNumber?: number | null;
   targetSnippet?: string | null;
   fontSize?: number;
@@ -32,6 +33,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
   filePath,
   headings,
   renderedHtml,
+  targetHeadingId,
   targetLineNumber,
   targetSnippet,
   fontSize = 15,
@@ -78,6 +80,8 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
     filePath,
     content,
     headings,
+    targetHeadingId,
+    targetLineNumber,
     onActiveHeadingChange,
     onScrollProgressChange
   });
@@ -538,7 +542,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
     <div className="doc-viewer-container">
       <InPageSearch
         isOpen={isSearchOpen}
-        onClose={onCloseSearch || (() => {})}
+        onClose={onCloseSearch || (() => { })}
         query={inPageQuery}
         onQueryChange={setInPageQuery}
         currentIndex={currentMatchIndex}

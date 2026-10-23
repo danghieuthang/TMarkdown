@@ -54,11 +54,18 @@ export function App() {
   const [currentContent, setCurrentContent] = useState<string>('');
   const [viewMode, setViewMode] = useState<ViewMode>('reading');
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+  const [targetHeadingId, setTargetHeadingId] = useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
 
   // Search match navigation state (Jump to line)
   const [targetLineNumber, setTargetLineNumber] = useState<number | null>(null);
   const [targetSnippet, setTargetSnippet] = useState<string | null>(null);
+
+  // Track cursor position & nearest heading from editor for seamless 2-way sync
+  const [editorCursorInfo, setEditorCursorInfo] = useState<{
+    line: number;
+    headingId: string | null;
+  } | null>(null);
 
   // Layout UI state
   const [showLeftSidebar, setShowLeftSidebar] = useState<boolean>(true);
@@ -243,6 +250,8 @@ export function App() {
       setTargetLineNumber(null);
       setTargetSnippet(null);
     }
+    setTargetHeadingId(null);
+    setEditorCursorInfo(null);
 
     // Update recent files list
     setRecentFiles(prev => {
@@ -341,8 +350,10 @@ export function App() {
         setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: false } : t));
       }
     }
+    setTargetHeadingId(null);
     setTargetLineNumber(null);
     setTargetSnippet(null);
+    setEditorCursorInfo(null);
     setActiveTabId(tabId);
   }, [activeTabId, tabs, currentContent]);
 
@@ -399,6 +410,34 @@ export function App() {
     if (Date.now() < scrollSpyLockedUntilRef.current) return;
     setActiveHeadingId(headingId);
   }, []);
+
+  // Handle mode transitions with bidirectional section/position synchronization
+  const handleChangeViewMode = useCallback((newMode: ViewMode) => {
+    if (newMode === viewMode) return;
+    if (newMode === 'reading') {
+      // Switching from Edit -> Reading: Sync to section or line where cursor was
+      if (editorCursorInfo) {
+        if (editorCursorInfo.headingId) {
+          setTargetHeadingId(editorCursorInfo.headingId);
+          setActiveHeadingId(editorCursorInfo.headingId);
+          setTargetLineNumber(null);
+        } else if (typeof editorCursorInfo.line === 'number') {
+          setTargetHeadingId(null);
+          setTargetLineNumber(editorCursorInfo.line + 1); // 1-indexed line jump
+        }
+      }
+    } else {
+      // Switching from Reading -> Edit:
+      // activeHeadingId and scrollProgress are passed directly to MarkdownEditor
+      setTargetHeadingId(null);
+      setTargetLineNumber(null);
+    }
+    setViewMode(newMode);
+  }, [viewMode, editorCursorInfo]);
+
+  const handleToggleViewMode = useCallback(() => {
+    handleChangeViewMode(viewMode === 'reading' ? 'edit' : 'reading');
+  }, [viewMode, handleChangeViewMode]);
 
   // Handle internal markdown links and wiki-links clicked inside documents
   const handleNavigateInternalLink = useCallback((targetHref: string, anchor?: string) => {
@@ -642,8 +681,9 @@ export function App() {
       id: 'toggle-view-mode',
       title: viewMode === 'reading' ? 'Chuyển sang chế độ Biên tập (Edit Mode)' : 'Chuyển sang chế độ Đọc (Reading Mode)',
       subtitle: 'Chuyển đổi giữa xem trước Markdown và soạn thảo trực tiếp',
+      shortcut: 'Ctrl+E',
       icon: viewMode === 'reading' ? <Edit3 size={15} /> : <BookOpen size={15} />,
-      execute: () => setViewMode(prev => prev === 'reading' ? 'edit' : 'reading')
+      execute: handleToggleViewMode
     },
     {
       id: 'toggle-sidebar-left',
@@ -821,6 +861,12 @@ export function App() {
         handleCloseTab(activeTabId, { stopPropagation: () => {} } as any);
         return;
       }
+      // Ctrl+E: Toggle View/Edit mode
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault();
+        handleToggleViewMode();
+        return;
+      }
       // Ctrl+0: Reset font scale
       if ((e.ctrlKey || e.metaKey) && e.key === '0') {
         e.preventDefault();
@@ -843,7 +889,7 @@ export function App() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [activeTabId, isZenMode, handleCloseTab, handleNewFile, handleOpenFolder, openSearchModal]);
+  }, [activeTabId, isZenMode, handleCloseTab, handleNewFile, handleOpenFolder, openSearchModal, handleToggleViewMode]);
 
   return (
     <div className={`app-container ${isZenMode ? 'zen-mode-active' : ''}`}>
@@ -866,7 +912,7 @@ export function App() {
           theme={theme}
           onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
           viewMode={viewMode}
-          onChangeViewMode={setViewMode}
+          onChangeViewMode={handleChangeViewMode}
           contentWidth={contentWidth}
           onChangeContentWidth={handleChangeContentWidth}
           onOpenFolder={handleOpenFolder}
@@ -930,6 +976,7 @@ export function App() {
                 filePath={activeTabId}
                 headings={headings}
                 renderedHtml={renderedHtml}
+                targetHeadingId={targetHeadingId}
                 targetLineNumber={targetLineNumber}
                 targetSnippet={targetSnippet}
                 fontSize={readerFontSize}
@@ -952,6 +999,12 @@ export function App() {
                 content={currentContent}
                 onChange={handleContentChange}
                 onSave={handleSaveContent}
+                targetHeadingId={activeHeadingId}
+                headings={headings}
+                scrollRatio={scrollProgress / 100}
+                onCursorChange={(cursorLine, nearestHeadingId) => {
+                  setEditorCursorInfo({ line: cursorLine, headingId: nearestHeadingId });
+                }}
               />
             )
           ) : (
