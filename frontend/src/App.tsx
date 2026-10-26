@@ -16,7 +16,8 @@ import {
   Maximize2,
   FoldHorizontal,
   UnfoldHorizontal,
-  Maximize
+  Maximize,
+  Sparkles
 } from 'lucide-react';
 import { TopBar } from './components/Header/TopBar';
 import { FileTree } from './components/Sidebar/FileTree';
@@ -26,6 +27,9 @@ import { MarkdownEditor } from './components/Viewer/MarkdownEditor';
 import { OutlineSidebar } from './components/Outline/OutlineSidebar';
 import { SearchModal, type CommandItem } from './components/Search/SearchModal';
 import { StatusBar } from './components/StatusBar';
+import { UpdateModal } from './components/Update/UpdateModal';
+import { ToastContainer } from './components/ui/Toast';
+import { useAutoUpdate } from './hooks/useAutoUpdate';
 import type { FileNode, TabItem, ViewMode, RecentItem, ContentWidthMode } from './types';
 import { SAMPLE_VAULT_FILES } from './data/sampleVault';
 import { vaultService } from './utils/fileSystem';
@@ -34,6 +38,22 @@ import logoDark from './assets/logo.png';
 import logoWhite from './assets/logo-white.png';
 
 export function App() {
+  // Auto-update system
+  const {
+    updateInfo,
+    isDownloading,
+    downloadProgress,
+    isReadyToRestart,
+    isModalOpen: isUpdateModalOpen,
+    setIsModalOpen: setIsUpdateModalOpen,
+    errorMessage: updateErrorMessage,
+    toasts,
+    dismissToast,
+    checkForUpdates,
+    startDownload,
+    applyAndRestart
+  } = useAutoUpdate();
+
   // Theme state
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('tmarkdown_theme') as 'dark' | 'light') || 'dark';
@@ -779,6 +799,21 @@ export function App() {
         setReaderFontSize(15);
         localStorage.setItem('tmarkdown_font_size', '15');
       }
+    },
+    {
+      id: 'check-updates',
+      title: 'Kiểm tra bản cập nhật mới (Check for Updates)',
+      subtitle: updateInfo?.hasUpdate
+        ? `Đã có bản phát hành mới v${updateInfo.latestVersion} sẵn sàng tải!`
+        : 'Kiểm tra phiên bản mới nhất từ GitHub Releases',
+      icon: <Sparkles size={15} />,
+      execute: () => {
+        if (updateInfo?.hasUpdate) {
+          setIsUpdateModalOpen(true);
+        } else {
+          checkForUpdates(true);
+        }
+      }
     }
   ], [
     theme,
@@ -789,6 +824,10 @@ export function App() {
     tabs,
     readerFontSize,
     isZenMode,
+    updateInfo,
+    checkForUpdates,
+    handleToggleViewMode,
+    setIsUpdateModalOpen,
     handleNewFile,
     handleOpenFolder,
     handleRefreshDirectory,
@@ -923,6 +962,8 @@ export function App() {
           onToggleRightSidebar={() => setShowRightSidebar(prev => !prev)}
           isZenMode={isZenMode}
           onToggleZenMode={() => setIsZenMode(prev => !prev)}
+          hasUpdate={Boolean(updateInfo?.hasUpdate)}
+          onOpenUpdate={() => setIsUpdateModalOpen(true)}
         />
       )}
 
@@ -1133,6 +1174,21 @@ export function App() {
         initialMode={searchModalMode}
         initialQuery={searchInitialQuery}
       />
+
+      {/* Auto-Update Modal & Notifications */}
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        updateInfo={updateInfo}
+        isDownloading={isDownloading}
+        downloadProgress={downloadProgress}
+        isReadyToRestart={isReadyToRestart}
+        errorMessage={updateErrorMessage}
+        onStartDownload={startDownload}
+        onApplyAndRestart={applyAndRestart}
+      />
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

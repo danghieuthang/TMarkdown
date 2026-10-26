@@ -3,6 +3,33 @@
 Tất cả các thay đổi đáng chú ý của dự án **TMarkdown** sẽ được ghi chép lại trong tệp này.
 Định dạng được dựa trên chuẩn [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) và tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.0] — 2026-10-26
+
+### Added (Thêm mới)
+- **Hệ thống Thiết kế Đồng bộ Giao diện (Vanilla Design System 3 Tầng)**:
+  - **Tầng 1 (Tokens)**: Bộ Semantic Tokens tập trung tại `styles/tokens.css` quản lý nhất quán toàn bộ màu sắc nền, văn bản, đường viền, khoảng cách lưới (`--space-1` đến `--space-10`), bo góc (`--radius-sm` đến `--radius-xl`) và các hiệu ứng chuyển động (`--transition-*`).
+  - **Tầng 2 (UI Primitives)**: Xây dựng thư viện component UI tái sử dụng độc lập trong `src/components/ui/`:
+    - `<Button />`: Hỗ trợ 4 biến thể (`primary`, `secondary`, `ghost`, `danger`), 3 kích cỡ (`sm`, `md`, `lg`), chế độ icon-only và trạng thái tải.
+    - `<Modal />`: Hộp thoại chuẩn hóa với hiệu ứng nền mờ (backdrop blur), lắng nghe phím ESC và chống click tràn.
+    - `<ProgressBar />`: Thanh tiến trình động hỗ trợ tỷ lệ % chính xác hoặc hiệu ứng indeterminate.
+    - `<Badge />`: Nhãn phiên bản và chấm phát tín hiệu (pulse dot indicator).
+    - `<Toast />` & `<ToastContainer />`: Hệ thống thông báo nổi góc màn hình không xâm lấn, tự động biến mất và hỗ trợ nút hành động nhanh.
+  - **Tầng 3 (Component Styles)**: Định kiểu tách biệt tại `styles/components.css`, tương thích 100% với Dark & Light Mode Obsidian.
+
+- **Hệ thống Tự động Cập nhật Trực tiếp trong Ứng dụng (In-App Auto-Updater)**:
+  - **Kiểm tra phiên bản ngầm thông minh**: Tự động gọi GitHub Releases API kiểm tra phiên bản mới nhất khi khởi động (kèm bộ nhớ đệm cache 24h và cơ chế *silent fail* khi mất mạng để không làm phiền người dùng).
+  - **Thông báo không xâm lấn (Non-intrusive Alerts)**:
+    - Nút Badge phát sáng tinh tế trên thanh **TopBar** khi có bản mới.
+    - Toast thông báo nhỏ góc phải màn hình kèm nút "Xem & Cập nhật".
+    - Lệnh *"Kiểm tra bản cập nhật mới (Check for Updates)"* tích hợp trực tiếp vào **Command Palette (`Ctrl+Shift+P` / `F1`)**.
+  - **Hộp thoại Cập nhật Nổi bật (UpdateModal)**: Hiển thị tên phiên bản, ngày phát hành, nhật ký thay đổi (Changelog Markdown phong phú) và thanh tiến trình tải dung lượng thời gian thực.
+  - **Cơ chế Hoán đổi Nhị phân Trực tiếp trên Windows (*In-Place Binary Swap*)**:
+    - Backend Go tải file `TMarkdown.exe` mới trực tiếp trong nền với bộ đệm chunk 64KB và stream tiến trình % tới giao diện.
+    - Áp dụng kỹ thuật đổi tên nhị phân độc lập của Go: tự động hoán đổi file `.exe` đang chạy sang `.old`, đưa file mới vào và khởi động lại ứng dụng tức thì chỉ với 1 click (*Restart to Update*).
+    - Tự động phát hiện và xóa dọn dẹp các tệp `.old` cũ khi ứng dụng khởi động lần tiếp theo.
+
+---
+
 ## [v1.1.1] — 2026-10-23
 
 ### Added (Thêm mới)

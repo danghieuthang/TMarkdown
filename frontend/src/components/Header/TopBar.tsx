@@ -12,7 +12,8 @@ import {
   Maximize2,
   FoldHorizontal,
   UnfoldHorizontal,
-  Maximize
+  Maximize,
+  Sparkles
 } from 'lucide-react';
 import logoDark from '../../assets/logo.png';
 import logoWhite from '../../assets/logo-white.png';
@@ -34,6 +35,8 @@ interface TopBarProps {
   onToggleRightSidebar: () => void;
   isZenMode?: boolean;
   onToggleZenMode?: () => void;
+  hasUpdate?: boolean;
+  onOpenUpdate?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -51,7 +54,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   showRightSidebar,
   onToggleRightSidebar,
   isZenMode = false,
-  onToggleZenMode
+  onToggleZenMode,
+  hasUpdate = false,
+  onOpenUpdate
 }) => {
   const handleCycleWidth = () => {
     if (!onChangeContentWidth) return;
@@ -81,6 +86,30 @@ export const TopBar: React.FC<TopBarProps> = ({
             className="brand-logo-img" 
           />
           <span className="brand-title">TMarkdown</span>
+          {hasUpdate && onOpenUpdate && (
+            <button
+              onClick={onOpenUpdate}
+              title="Có bản cập nhật mới! Bấm để xem chi tiết và cập nhật trực tiếp"
+              style={{
+                marginLeft: 6,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '2px 8px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: 'var(--accent-light)',
+                border: '1px solid var(--border-accent)',
+                color: 'var(--text-accent)',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                animation: 'uiBadgePulse 2s infinite'
+              }}
+            >
+              <Sparkles size={11} />
+              <span>Update</span>
+            </button>
+          )}
         </div>
 
         <button 

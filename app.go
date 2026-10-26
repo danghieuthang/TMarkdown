@@ -3,12 +3,16 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +39,22 @@ type SearchResult struct {
 	Snippet    string `json:"snippet"`
 }
 
+// AppVersion defines the current semantic version of TMarkdown
+const AppVersion = "1.2.0"
+
+// UpdateInfo holds details about an available update
+type UpdateInfo struct {
+	HasUpdate      bool   `json:"hasUpdate"`
+	CurrentVersion string `json:"currentVersion"`
+	LatestVersion  string `json:"latestVersion"`
+	ReleaseName    string `json:"releaseName"`
+	ReleaseNotes   string `json:"releaseNotes"`
+	AssetURL       string `json:"assetUrl"`
+	AssetSize      int64  `json:"assetSize"`
+	PublishedAt    string `json:"publishedAt"`
+	HtmlURL        string `json:"htmlUrl"`
+}
+
 // App struct
 type App struct {
 	ctx         context.Context
@@ -52,6 +72,11 @@ type App struct {
 	// Search cancellation
 	searchMu     sync.Mutex
 	searchCancel context.CancelFunc
+
+	// Auto-updater state & cache
+	updateMu        sync.Mutex
+	lastUpdateCheck time.Time
+	cachedUpdate    *UpdateInfo
 }
 
 // NewApp creates a new App application struct
@@ -73,6 +98,7 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.cleanOldExecutable()
 }
 
 // shutdown is called when the app closes
@@ -532,4 +558,285 @@ func (a *App) SearchVault(rootPath string, query string) ([]SearchResult, error)
 	}
 
 	return results, nil
+}
+
+// cleanOldExecutable removes any left-over .old executable from a previous update
+func (a *App) cleanOldExecutable() {
+	exePath, err := os.Executable()
+	if err != nil {
+		return
+	}
+	oldPath := filepath.Join(filepath.Dir(exePath), "TMarkdown.exe.old")
+	if _, err := os.Stat(oldPath); err == nil {
+		_ = os.Remove(oldPath)
+	}
+}
+
+// GetAppVersion returns the current version of the application
+func (a *App) GetAppVersion() string {
+	return AppVersion
+}
+
+// compareSemVer compares two semantic version strings (e.g. "1.1.1" vs "1.2.0")
+// Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if v1 == v2
+func compareSemVer(v1, v2 string) int {
+	v1 = strings.TrimPrefix(strings.TrimSpace(v1), "v")
+	v2 = strings.TrimPrefix(strings.TrimSpace(v2), "v")
+
+	parts1 := strings.Split(v1, ".")
+	parts2 := strings.Split(v2, ".")
+
+	maxLen := len(parts1)
+	if len(parts2) > maxLen {
+		maxLen = len(parts2)
+	}
+
+	for i := 0; i < maxLen; i++ {
+		var n1, n2 int
+		if i < len(parts1) {
+			p := strings.Split(parts1[i], "-")[0]
+			n1, _ = strconv.Atoi(p)
+		}
+		if i < len(parts2) {
+			p := strings.Split(parts2[i], "-")[0]
+			n2, _ = strconv.Atoi(p)
+		}
+		if n1 > n2 {
+			return 1
+		}
+		if n1 < n2 {
+			return -1
+		}
+	}
+	return 0
+}
+
+// CheckForUpdates queries GitHub Releases API for a newer version
+func (a *App) CheckForUpdates(manual bool) (*UpdateInfo, error) {
+	a.updateMu.Lock()
+	defer a.updateMu.Unlock()
+
+	// If not manual check, use cached result if checked within the last 24 hours
+	if !manual && a.cachedUpdate != nil && time.Since(a.lastUpdateCheck) < 24*time.Hour {
+		return a.cachedUpdate, nil
+	}
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	req, err := http.NewRequestWithContext(a.ctx, "GET", "https://api.github.com/repos/danghieuthang/TMarkdown/releases/latest", nil)
+	if err != nil {
+		if !manual {
+			return &UpdateInfo{CurrentVersion: AppVersion, HasUpdate: false}, nil
+		}
+		return nil, fmt.Errorf("không thể tạo yêu cầu kiểm tra cập nhật: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "TMarkdown-App/"+AppVersion)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		if !manual {
+			return &UpdateInfo{CurrentVersion: AppVersion, HasUpdate: false}, nil
+		}
+		return nil, fmt.Errorf("không thể kết nối tới máy chủ GitHub: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		if !manual {
+			return &UpdateInfo{CurrentVersion: AppVersion, HasUpdate: false}, nil
+		}
+		return nil, fmt.Errorf("máy chủ GitHub phản hồi mã lỗi: %d", resp.StatusCode)
+	}
+
+	var ghRelease struct {
+		TagName     string `json:"tag_name"`
+		Name        string `json:"name"`
+		Body        string `json:"body"`
+		HTMLURL     string `json:"html_url"`
+		PublishedAt string `json:"published_at"`
+		Assets      []struct {
+			Name               string `json:"name"`
+			BrowserDownloadURL string `json:"browser_download_url"`
+			Size               int64  `json:"size"`
+		} `json:"assets"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&ghRelease); err != nil {
+		if !manual {
+			return &UpdateInfo{CurrentVersion: AppVersion, HasUpdate: false}, nil
+		}
+		return nil, fmt.Errorf("lỗi đọc thông tin bản phát hành: %w", err)
+	}
+
+	latestVersion := strings.TrimPrefix(strings.TrimSpace(ghRelease.TagName), "v")
+	hasUpdate := compareSemVer(latestVersion, AppVersion) > 0
+
+	var assetURL string
+	var assetSize int64
+	for _, asset := range ghRelease.Assets {
+		if strings.EqualFold(asset.Name, "TMarkdown.exe") {
+			assetURL = asset.BrowserDownloadURL
+			assetSize = asset.Size
+			break
+		}
+	}
+
+	// Fallback if not named exactly TMarkdown.exe
+	if assetURL == "" {
+		for _, asset := range ghRelease.Assets {
+			if strings.HasSuffix(strings.ToLower(asset.Name), ".exe") || strings.HasSuffix(strings.ToLower(asset.Name), ".zip") {
+				assetURL = asset.BrowserDownloadURL
+				assetSize = asset.Size
+				break
+			}
+		}
+	}
+
+	info := &UpdateInfo{
+		HasUpdate:      hasUpdate,
+		CurrentVersion: AppVersion,
+		LatestVersion:  latestVersion,
+		ReleaseName:    ghRelease.Name,
+		ReleaseNotes:   ghRelease.Body,
+		AssetURL:       assetURL,
+		AssetSize:      assetSize,
+		PublishedAt:    ghRelease.PublishedAt,
+		HtmlURL:        ghRelease.HTMLURL,
+	}
+
+	a.cachedUpdate = info
+	a.lastUpdateCheck = time.Now()
+
+	return info, nil
+}
+
+// DownloadUpdate downloads the new executable from assetURL, reporting progress via Wails runtime event
+func (a *App) DownloadUpdate(assetURL string) error {
+	if assetURL == "" {
+		return fmt.Errorf("đường dẫn tải bản cập nhật trống")
+	}
+
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("không thể xác định vị trí file thực thi: %w", err)
+	}
+	exeDir := filepath.Dir(exePath)
+	newPath := filepath.Join(exeDir, "TMarkdown.exe.new")
+
+	client := &http.Client{
+		Timeout: 30 * time.Minute,
+	}
+
+	req, err := http.NewRequestWithContext(a.ctx, "GET", assetURL, nil)
+	if err != nil {
+		return fmt.Errorf("không thể tạo yêu cầu tải: %w", err)
+	}
+	req.Header.Set("User-Agent", "TMarkdown-App/"+AppVersion)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("lỗi khi kết nối tải file: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("máy chủ phản hồi mã %d khi tải", resp.StatusCode)
+	}
+
+	totalSize := resp.ContentLength
+	out, err := os.Create(newPath)
+	if err != nil {
+		return fmt.Errorf("không thể tạo file cập nhật tạm %s: %w", newPath, err)
+	}
+	defer out.Close()
+
+	buf := make([]byte, 64*1024) // 64KB buffer
+	var downloaded int64
+	var lastPercent int = -1
+
+	for {
+		n, readErr := resp.Body.Read(buf)
+		if n > 0 {
+			_, writeErr := out.Write(buf[:n])
+			if writeErr != nil {
+				return fmt.Errorf("lỗi ghi dữ liệu cập nhật: %w", writeErr)
+			}
+			downloaded += int64(n)
+			if totalSize > 0 {
+				percent := int(float64(downloaded) / float64(totalSize) * 100)
+				if percent != lastPercent {
+					lastPercent = percent
+					runtime.EventsEmit(a.ctx, "update:progress", map[string]interface{}{
+						"percent":    percent,
+						"downloaded": downloaded,
+						"total":      totalSize,
+					})
+				}
+			}
+		}
+		if readErr != nil {
+			if readErr == io.EOF {
+				break
+			}
+			return fmt.Errorf("lỗi trong quá trình tải: %w", readErr)
+		}
+	}
+
+	runtime.EventsEmit(a.ctx, "update:progress", map[string]interface{}{
+		"percent":    100,
+		"downloaded": totalSize,
+		"total":      totalSize,
+	})
+
+	return nil
+}
+
+// ApplyUpdateAndRestart performs the in-place binary swap on Windows and restarts the app
+func (a *App) ApplyUpdateAndRestart() error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("không thể xác định vị trí thực thi: %w", err)
+	}
+	exeDir := filepath.Dir(exePath)
+	newPath := filepath.Join(exeDir, "TMarkdown.exe.new")
+	oldPath := filepath.Join(exeDir, "TMarkdown.exe.old")
+
+	// Verify new executable exists
+	info, err := os.Stat(newPath)
+	if err != nil || info.Size() == 0 {
+		return fmt.Errorf("file cập nhật mới không tồn tại hoặc bị rỗng")
+	}
+
+	// Remove old file if it was previously left
+	_ = os.Remove(oldPath)
+
+	// Step 1: Rename current running executable to .old
+	if err := os.Rename(exePath, oldPath); err != nil {
+		return fmt.Errorf("không thể đổi tên file thực thi hiện tại: %w", err)
+	}
+
+	// Step 2: Rename .new to current executable
+	if err := os.Rename(newPath, exePath); err != nil {
+		// Rollback
+		_ = os.Rename(oldPath, exePath)
+		return fmt.Errorf("không thể kích hoạt file cập nhật mới: %w", err)
+	}
+
+	// Step 3: Spawn new process detached
+	cmd := exec.Command(exePath)
+	cmd.Dir = exeDir
+	if err := cmd.Start(); err != nil {
+		// Rollback if cannot start
+		_ = os.Rename(exePath, newPath)
+		_ = os.Rename(oldPath, exePath)
+		return fmt.Errorf("không thể khởi động phiên bản mới: %w", err)
+	}
+
+	// Step 4: Gracefully exit current process
+	os.Exit(0)
+	return nil
 }

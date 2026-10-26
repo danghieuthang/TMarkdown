@@ -1,3 +1,6 @@
+@import './styles/tokens.css';
+@import './styles/components.css';
+
 :root {
   /* Font Families */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
