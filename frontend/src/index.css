@@ -1230,8 +1230,9 @@ html, body, #root {
   padding: 8px 12px;
   border: 1px solid var(--border-subtle);
   text-align: left;
-  white-space: nowrap;
-  max-width: 220px;
+  vertical-align: top;
+  white-space: pre-line;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

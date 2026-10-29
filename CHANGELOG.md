@@ -3,6 +3,17 @@
 Tất cả các thay đổi đáng chú ý của dự án **TMarkdown** sẽ được ghi chép lại trong tệp này.
 Định dạng được dựa trên chuẩn [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) và tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.1] — 2026-10-29
+
+### Fixed (Sửa lỗi)
+- **Bảo toàn ký tự xuống dòng khi Sao chép bảng (Copy Table) sang Excel & Google Sheets**:
+  - Trích xuất chuẩn xác nội dung ô có thẻ ngắt dòng `<br>`, `<br/>`, `<br />`, thẻ khối (`<p>`, `<div>`, `<li>`) thay vì dùng `textContent` (vốn loại bỏ thẻ `<br>` làm dính liền các dòng).
+  - Tích hợp chuẩn thẻ Excel `<br style="mso-data-placement:same-cell;" />` và CSS inline chuyên dụng trong clipboard HTML giúp giữ nguyên xuống dòng trong cùng 1 ô (`Alt + Enter`), không bị tách thành hàng mới hay biến thành khoảng trắng.
+  - Chuẩn hóa định dạng TSV và CSV theo chuẩn RFC 4180 (bao bọc ô đa dòng bằng dấu ngoặc kép) khi dán dạng văn bản thuần hoặc tải file `.csv`.
+  - Cập nhật giao diện Xem trước (Live Preview) trong Modal tùy chỉnh cột với `white-space: pre-line` và căn lề đỉnh ô (`vertical-align: top`).
+
+---
+
 ## [v1.2.0] — 2026-10-26
 
 ### Added (Thêm mới)

@@ -217,7 +217,7 @@ export const TableCustomizerModal: React.FC<TableCustomizerModalProps> = ({
                           onChange={() => toggleColumn(colIdx)}
                         />
                         <span className="table-col-index">{orderIdx + 1}.</span>
-                        <span className="table-col-name" title={colName}>{colName}</span>
+                        <span className="table-col-name" title={colName}>{colName.replace(/\n/g, ' ')}</span>
                       </label>
 
                       <div className="table-col-order-btns">

@@ -40,7 +40,7 @@ type SearchResult struct {
 }
 
 // AppVersion defines the current semantic version of TMarkdown
-const AppVersion = "1.2.0"
+const AppVersion = "1.2.1"
 
 // UpdateInfo holds details about an available update
 type UpdateInfo struct {
